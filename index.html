@@ -91,7 +91,7 @@
   <section id="setup" hidden aria-labelledby="setup-heading">
     <h2 id="setup-heading">Choose your city</h2>
     <form id="city-form">
-      <label for="city-input">City name</label>
+      <label for="city-input">City name or ZIP code</label>
       <input id="city-input" type="text" autocomplete="address-level2" autocapitalize="words" enterkeyhint="search">
       <button type="submit">Find city</button>
     </form>
@@ -161,17 +161,89 @@
     $("city-input").focus();
   }
 
+  const STATES = {
+    al:"alabama", ak:"alaska", az:"arizona", ar:"arkansas", ca:"california", co:"colorado",
+    ct:"connecticut", de:"delaware", fl:"florida", ga:"georgia", hi:"hawaii", id:"idaho",
+    il:"illinois", in:"indiana", ia:"iowa", ks:"kansas", ky:"kentucky", la:"louisiana",
+    me:"maine", md:"maryland", ma:"massachusetts", mi:"michigan", mn:"minnesota",
+    ms:"mississippi", mo:"missouri", mt:"montana", ne:"nebraska", nv:"nevada",
+    nh:"new hampshire", nj:"new jersey", nm:"new mexico", ny:"new york", nc:"north carolina",
+    nd:"north dakota", oh:"ohio", ok:"oklahoma", or:"oregon", pa:"pennsylvania",
+    ri:"rhode island", sc:"south carolina", sd:"south dakota", tn:"tennessee", tx:"texas",
+    ut:"utah", vt:"vermont", va:"virginia", wa:"washington", wv:"west virginia",
+    wi:"wisconsin", wy:"wyoming", dc:"district of columbia"
+  };
+
+  async function geocode(name, extra) {
+    const url = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=en&format=json&name="
+      + encodeURIComponent(name) + (extra || "");
+    const data = await (await fetch(url)).json();
+    return data.results || [];
+  }
+
+  // Different ways of writing the same place name: "Saint Paul’s", "St. Pauls", and so on.
+  function nameVariants(name) {
+    const noApostrophe = name.replace(/'/g, "");
+    const saint = noApostrophe.replace(/^st\.?\s+/i, "Saint ");
+    const st = noApostrophe.replace(/^saint\s+/i, "St ");
+    return [...new Set([noApostrophe, name, saint, st])];
+  }
+
+  function matchesRegion(r, region) {
+    if (!region) return true;
+    const want = (STATES[region] || region).toLowerCase();
+    return [r.admin1, r.country, r.country_code].some(
+      (v) => v && v.toLowerCase().startsWith(want)
+    );
+  }
+
+  async function searchPlaces(query) {
+    const cleaned = query.replace(/[‘’ʼ]/g, "'").replace(/\s+/g, " ").trim();
+
+    // A US ZIP code.
+    if (/^\d{5}$/.test(cleaned)) return geocode(cleaned, "&countryCode=US");
+
+    // Split "City, State" or "City State" into the place and an optional region.
+    let attempts = [];
+    const commaParts = cleaned.split(",").map((s) => s.trim()).filter(Boolean);
+    if (commaParts.length > 1) {
+      attempts.push({ name: commaParts[0], region: commaParts.slice(1).join(" ").toLowerCase() });
+    } else {
+      const words = cleaned.split(" ");
+      attempts.push({ name: cleaned, region: "" });
+      for (let cut = 1; cut <= 2 && cut < words.length; cut++) {
+        attempts.push({
+          name: words.slice(0, -cut).join(" "),
+          region: words.slice(-cut).join(" ").toLowerCase().replace(/\./g, "")
+        });
+      }
+    }
+
+    for (const a of attempts) {
+      const seen = new Map();
+      for (const v of nameVariants(a.name)) {
+        if (v.length < 2) continue;
+        (await geocode(v)).forEach((r) => { if (!seen.has(r.id)) seen.set(r.id, r); });
+      }
+      let results = [...seen.values()];
+      if (a.region) {
+        const filtered = results.filter((r) => matchesRegion(r, a.region));
+        if (filtered.length) results = filtered;
+        else if (attempts.length > 1 && a !== attempts[0]) continue;
+      }
+      if (results.length) return results.slice(0, 10);
+    }
+    return [];
+  }
+
   async function findCity(query) {
-    const name = query.split(",")[0].trim();
-    if (!name) { say("Please type a city name."); return; }
+    const name = query.trim();
+    if (!name) { say("Please type a city name or ZIP code."); return; }
     say("Searching for " + name + "…");
     try {
-      const url = "https://geocoding-api.open-meteo.com/v1/search?count=8&language=en&format=json&name="
-        + encodeURIComponent(name);
-      const data = await (await fetch(url)).json();
-      const results = data.results || [];
+      const results = await searchPlaces(name);
       if (results.length === 0) {
-        say("No city found called " + name + ". Check the spelling and try again.");
+        say("No city found for " + name + ". Try just the city name, or your ZIP code.");
         return;
       }
       if (results.length === 1) {
