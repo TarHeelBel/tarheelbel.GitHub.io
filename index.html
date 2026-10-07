@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Weather">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Weather</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --muted: #444444;
+    --accent: #0a4fa8;
+    --card: #f2f4f7;
+    --border: #c9ced6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --text: #f5f5f5;
+      --muted: #c8c8c8;
+      --accent: #6cb0ff;
+      --card: #1c1c1e;
+      --border: #3a3a3c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1rem;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    background: var(--bg);
+    color: var(--text);
+    font: -apple-system-body;
+    font-family: -apple-system, system-ui, sans-serif;
+    line-height: 1.4;
+  }
+  h1 { font-size: 1.75rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.25rem; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.25rem 0; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+  input {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  button {
+    font-size: 1.05rem;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0.5rem 0 0;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #ffffff;
+    min-height: 44px;
+  }
+  @media (prefers-color-scheme: dark) {
+    button { color: #000000; }
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .choice { display: block; width: 100%; text-align: left; margin: 0 0 0.5rem; }
+  .big { font-size: 1.5rem; font-weight: 600; }
+  #status { color: var(--muted); min-height: 1.4em; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Weather</h1>
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <section id="setup" hidden aria-labelledby="setup-heading">
+    <h2 id="setup-heading">Choose your city</h2>
+    <form id="city-form">
+      <label for="city-input">City name</label>
+      <input id="city-input" type="text" autocomplete="address-level2" autocapitalize="words" enterkeyhint="search">
+      <button type="submit">Find city</button>
+    </form>
+    <div id="choices-wrap" hidden>
+      <h2 id="choices-heading">Which one did you mean?</h2>
+      <div id="choices" role="group" aria-labelledby="choices-heading"></div>
+    </div>
+  </section>
+
+  <section id="weather" hidden>
+    <h2>Current conditions</h2>
+    <ul id="current"></ul>
+
+    <h2>5-day forecast</h2>
+    <ul id="forecast"></ul>
+
+    <button id="refresh" type="button">Refresh</button>
+    <button id="change-city" type="button" class="secondary">Change city</button>
+  </section>
+</main>
+
+<script>
+  const STORAGE_KEY = "weather-city";
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status");
+
+  // Plain-language descriptions for the weather codes Open-Meteo returns.
+  const CONDITIONS = {
+    0: "clear sky", 1: "mostly clear", 2: "partly cloudy", 3: "overcast",
+    45: "fog", 48: "freezing fog",
+    51: "light drizzle", 53: "drizzle", 55: "heavy drizzle",
+    56: "light freezing drizzle", 57: "freezing drizzle",
+    61: "light rain", 63: "rain", 65: "heavy rain",
+    66: "light freezing rain", 67: "freezing rain",
+    71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains",
+    80: "light rain showers", 81: "rain showers", 82: "heavy rain showers",
+    85: "light snow showers", 86: "heavy snow showers",
+    95: "thunderstorms", 96: "thunderstorms with hail", 99: "severe thunderstorms with hail"
+  };
+  const describe = (code) => CONDITIONS[code] || "unknown conditions";
+  const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const round = (n) => Math.round(n);
+
+  function say(message) {
+    statusEl.textContent = message;
+  }
+
+  function loadCity() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); }
+    catch (e) { return null; }
+  }
+  function saveCity(city) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(city)); } catch (e) {}
+  }
+
+  function cityLabel(r) {
+    return [r.name, r.admin1, r.country].filter(Boolean).join(", ");
+  }
+
+  function showSetup() {
+    $("weather").hidden = true;
+    $("setup").hidden = false;
+    $("choices-wrap").hidden = true;
+    $("title").textContent = "Weather";
+    $("city-input").value = "";
+    $("city-input").focus();
+  }
+
+  async function findCity(query) {
+    const name = query.split(",")[0].trim();
+    if (!name) { say("Please type a city name."); return; }
+    say("Searching for " + name + "…");
+    try {
+      const url = "https://geocoding-api.open-meteo.com/v1/search?count=8&language=en&format=json&name="
+        + encodeURIComponent(name);
+      const data = await (await fetch(url)).json();
+      const results = data.results || [];
+      if (results.length === 0) {
+        say("No city found called " + name + ". Check the spelling and try again.");
+        return;
+      }
+      if (results.length === 1) {
+        chooseCity(results[0]);
+        return;
+      }
+      const box = $("choices");
+      box.innerHTML = "";
+      results.forEach((r) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "choice secondary";
+        b.textContent = cityLabel(r);
+        b.addEventListener("click", () => chooseCity(r));
+        box.appendChild(b);
+      });
+      $("choices-wrap").hidden = false;
+      say(results.length + " cities found. Choose one below.");
+      $("choices-heading").setAttribute("tabindex", "-1");
+      $("choices-heading").focus();
+    } catch (e) {
+      say("Couldn't search right now. Check your internet connection and try again.");
+    }
+  }
+
+  function chooseCity(r) {
+    const city = { name: r.name, label: cityLabel(r), latitude: r.latitude, longitude: r.longitude };
+    saveCity(city);
+    loadWeather(city);
+  }
+
+  function dayName(dateStr, index) {
+    if (index === 0) return "Today";
+    if (index === 1) return "Tomorrow";
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long" });
+  }
+
+  function addItem(list, text, className) {
+    const li = document.createElement("li");
+    li.textContent = text;
+    if (className) li.className = className;
+    list.appendChild(li);
+  }
+
+  async function loadWeather(city) {
+    $("setup").hidden = true;
+    $("title").textContent = "Weather for " + city.name;
+    say("Loading weather for " + city.name + "…");
+    try {
+      const url = "https://api.open-meteo.com/v1/forecast"
+        + "?latitude=" + city.latitude + "&longitude=" + city.longitude
+        + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability"
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
+        + "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=5";
+      const data = await (await fetch(url)).json();
+      const c = data.current;
+      const d = data.daily;
+
+      // Current conditions: one item per detail.
+      const current = $("current");
+      current.innerHTML = "";
+      let rain = c.precipitation_probability;
+      if (rain === null || rain === undefined) rain = d.precipitation_probability_max[0];
+      addItem(current, round(c.temperature_2m) + " degrees, " + describe(c.weather_code), "big");
+      addItem(current, "Feels like " + round(c.apparent_temperature) + " degrees");
+      addItem(current, "Humidity " + round(c.relative_humidity_2m) + " percent");
+      addItem(current, "Wind " + round(c.wind_speed_10m) + " miles per hour");
+      if (rain !== null && rain !== undefined) {
+        addItem(current, "Chance of rain " + round(rain) + " percent");
+      }
+
+      // Forecast: one line per day, read in a single swipe.
+      const forecast = $("forecast");
+      forecast.innerHTML = "";
+      d.time.forEach((date, i) => {
+        let line = dayName(date, i) + ", " + describe(d.weather_code[i])
+          + ", high " + round(d.temperature_2m_max[i])
+          + ", low " + round(d.temperature_2m_min[i]);
+        const p = d.precipitation_probability_max[i];
+        if (p !== null && p !== undefined) line += ", " + round(p) + " percent chance of rain";
+        addItem(forecast, line + ".");
+      });
+
+      $("weather").hidden = false;
+      const time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      say("Updated at " + time + ".");
+    } catch (e) {
+      say("Couldn't load the weather. Check your internet connection, then activate Refresh.");
+      $("weather").hidden = false;
+    }
+  }
+
+  $("city-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    findCity($("city-input").value);
+  });
+  $("refresh").addEventListener("click", () => {
+    const city = loadCity();
+    if (city) loadWeather(city);
+  });
+  $("change-city").addEventListener("click", showSetup);
+
+  const saved = loadCity();
+  if (saved) loadWeather(saved); else showSetup();
+</script>
+</body>
+</html>
