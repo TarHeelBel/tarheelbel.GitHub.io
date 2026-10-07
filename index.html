@@ -16,6 +16,7 @@
     --accent: #0a4fa8;
     --card: #f2f4f7;
     --border: #c9ced6;
+    --alert: #b3261e;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -25,6 +26,7 @@
       --accent: #6cb0ff;
       --card: #1c1c1e;
       --border: #3a3a3c;
+      --alert: #ff8a80;
     }
   }
   * { box-sizing: border-box; }
@@ -41,14 +43,22 @@
   h1 { font-size: 1.75rem; margin: 0 0 0.25rem; }
   h2 { font-size: 1.25rem; margin: 1.5rem 0 0.5rem; }
   p { margin: 0.25rem 0; }
-  ul { list-style: none; margin: 0; padding: 0; }
-  li {
+  .line {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem;
   }
+  .alert {
+    background: var(--card);
+    border: 2px solid var(--alert);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin: 0 0 0.5rem;
+  }
+  .alert summary { font-weight: 600; cursor: pointer; }
+  .alert p { margin: 0.5rem 0 0; white-space: pre-line; }
   label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
   input {
     width: 100%;
@@ -102,11 +112,16 @@
   </section>
 
   <section id="weather" hidden>
+    <div id="alerts-wrap" hidden>
+      <h2>Weather alerts</h2>
+      <div id="alerts"></div>
+    </div>
+
     <h2>Current conditions</h2>
-    <ul id="current"></ul>
+    <div id="current"></div>
 
     <h2>5-day forecast</h2>
-    <ul id="forecast"></ul>
+    <div id="forecast"></div>
 
     <button id="refresh" type="button">Refresh</button>
     <button id="change-city" type="button" class="secondary">Change city</button>
@@ -282,11 +297,51 @@
     return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long" });
   }
 
-  function addItem(list, text, className) {
-    const li = document.createElement("li");
-    li.textContent = text;
-    if (className) li.className = className;
-    list.appendChild(li);
+  // Each line is a single paragraph, so VoiceOver reads it once per swipe.
+  function addItem(box, text, className) {
+    const p = document.createElement("p");
+    p.textContent = text;
+    p.className = "line" + (className ? " " + className : "");
+    box.appendChild(p);
+  }
+
+  function whenText(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit" });
+  }
+
+  // Active alerts from the US National Weather Service. Returns null if unavailable.
+  async function loadAlerts(city) {
+    try {
+      const url = "https://api.weather.gov/alerts/active?point="
+        + Number(city.latitude).toFixed(4) + "," + Number(city.longitude).toFixed(4);
+      const res = await fetch(url, { headers: { Accept: "application/geo+json" } });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data.features || []).map((f) => f.properties);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function showAlerts(alerts) {
+    const wrap = $("alerts-wrap");
+    const box = $("alerts");
+    box.innerHTML = "";
+    if (!alerts || alerts.length === 0) { wrap.hidden = true; return; }
+    alerts.forEach((a) => {
+      const details = document.createElement("details");
+      details.className = "alert";
+      const summary = document.createElement("summary");
+      const until = a.ends || a.expires;
+      summary.textContent = a.event + (until ? ", until " + whenText(until) : "") + ".";
+      details.appendChild(summary);
+      const body = document.createElement("p");
+      body.textContent = [a.description, a.instruction].filter(Boolean).join("\n\n");
+      details.appendChild(body);
+      box.appendChild(details);
+    });
+    wrap.hidden = false;
   }
 
   async function loadWeather(city) {
@@ -299,7 +354,11 @@
         + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability"
         + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
         + "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=5";
-      const data = await (await fetch(url)).json();
+      const [data, alerts] = await Promise.all([
+        fetch(url).then((r) => r.json()),
+        loadAlerts(city)
+      ]);
+      showAlerts(alerts);
       const c = data.current;
       const d = data.daily;
 
@@ -330,7 +389,11 @@
 
       $("weather").hidden = false;
       const time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      say("Updated at " + time + ".");
+      let alertNote = "";
+      if (alerts && alerts.length === 1) alertNote = " 1 weather alert.";
+      else if (alerts && alerts.length > 1) alertNote = " " + alerts.length + " weather alerts.";
+      else if (alerts) alertNote = " No weather alerts.";
+      say("Updated at " + time + "." + alertNote);
     } catch (e) {
       say("Couldn't load the weather. Check your internet connection, then activate Refresh.");
       $("weather").hidden = false;
