@@ -5,12 +5,12 @@ static class Program {
     [STAThread] static void Main() {
         ApplicationConfiguration.Initialize();
         using var mutex=new Mutex(true,"Local\\MeetingDirectory-6240B2D5",out var first);
-        if(!first){MessageBox.Show("Meeting Directory is already open. Close it before opening another version, or use Alt+Tab to find it.","Meeting Directory");return;}
+        if(!first){MessageBox.Show("CallKeeper is already open. Close it before opening another version, or use Alt+Tab to find it.","CallKeeper");return;}
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-        Application.ThreadException+=(_,e)=>MessageBox.Show("The operation could not be completed. "+e.Exception.Message,"Meeting Directory");
+        Application.ThreadException+=(_,e)=>MessageBox.Show("The operation could not be completed. "+e.Exception.Message,"CallKeeper");
         var path=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"MeetingDirectory","meetings.json");
         try { var store=new Store(path); Application.Run(new MainWindow(store,store.Load())); }
-        catch(Exception e) {MessageBox.Show("Meeting Directory could not open. Your saved file has not been changed.\r\n"+e.Message+"\r\nData location: "+path,"Meeting Directory",MessageBoxButtons.OK,MessageBoxIcon.Error);}
+        catch(Exception e) {MessageBox.Show("CallKeeper could not open. Your saved file has not been changed.\r\n"+e.Message+"\r\nData location: "+path,"CallKeeper",MessageBoxButtons.OK,MessageBoxIcon.Error);}
     }
 }
 static class Ui {
@@ -41,7 +41,7 @@ sealed class MainWindow:Form {
     bool refreshingCategories;
     public MainWindow(Store store,List<Meeting> meetings) {
         this.store=store;this.meetings=meetings;reminderLog=new ReminderLog(Path.Combine(Path.GetDirectoryName(store.PathName)!,"reminders.json"));
-        Text="Meeting Directory 0.3";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
+        Text="CallKeeper 0.4";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
         Size=new Size(1050,870);MinimumSize=new Size(720,650);StartPosition=FormStartPosition.CenterScreen;
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=10,Padding=new Padding(12)};
         for(int i=0;i<10;i++)layout.RowStyles.Add(new RowStyle(i==6?SizeType.Percent:i==8?SizeType.Percent:SizeType.AutoSize,i==6?50:i==8?50:0));
@@ -62,7 +62,7 @@ sealed class MainWindow:Form {
         Shown+=(_,_)=>{RefreshRows();list.Focus();CheckReminders();};
     }
     MenuStrip BuildMenus() {
-        var bar=new MenuStrip{AccessibleName="Meeting Directory menu bar",Font=Font,Dock=DockStyle.Top,TabStop=false};
+        var bar=new MenuStrip{AccessibleName="CallKeeper menu bar",Font=Font,Dock=DockStyle.Top,TabStop=false};
         var file=new ToolStripMenuItem("&File");
         var meeting=new ToolStripMenuItem("&Meeting");
         var views=new ToolStripMenuItem("&View");
@@ -105,7 +105,7 @@ sealed class MainWindow:Form {
         Item(help,"&User guide",Help,Keys.F1);
         Item(help,"&Keyboard shortcuts",()=>{using var window=new TextWindow("Keyboard shortcuts",ShortcutText);window.ShowDialog(this);});
         help.DropDownItems.Add(new ToolStripSeparator());
-        Item(help,"&About Meeting Directory",()=>MessageBox.Show(this,"Meeting Directory 0.3\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About Meeting Directory"));
+        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.4\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
         bar.Items.AddRange([file,meeting,views,help]);return bar;
     }
     const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Alt+F4: Close window.";
@@ -181,7 +181,7 @@ sealed class MainWindow:Form {
     }
     void Export() {
         using var choose=new SelectionWindow("Export selected meetings",meetings,Selected?.Id,true);if(choose.ShowDialog(this)!=DialogResult.OK)return;
-        using var save=new SaveFileDialog{Filter="Meeting Directory shared meetings (*.json)|*.json",FileName="Shared-meetings.json"};if(save.ShowDialog(this)!=DialogResult.OK)return;
+        using var save=new SaveFileDialog{Filter="CallKeeper shared meetings (*.json)|*.json",FileName="Shared-meetings.json"};if(save.ShowDialog(this)!=DialogResult.OK)return;
         try {
             ProtectLiveData(save.FileName);
             var outgoing=choose.SelectedMeetings.Select(m=>m with{Favorite=false,ReminderMinutes=null,Notes=choose.IncludePrivate?m.Notes:"",Passcode=choose.IncludePrivate?m.Passcode:""}).ToList();
@@ -189,7 +189,7 @@ sealed class MainWindow:Form {
         }catch(Exception e){Ui.Error(this,e);}
     }
     void Import() {
-        using var file=new OpenFileDialog{Filter="Meeting Directory shared meetings (*.json)|*.json"};if(file.ShowDialog(this)!=DialogResult.OK)return;
+        using var file=new OpenFileDialog{Filter="CallKeeper shared meetings (*.json)|*.json"};if(file.ShowDialog(this)!=DialogResult.OK)return;
         try {
             var imported=Store.Read(file.FileName);
             using var choose=new SelectionWindow("Review shared meetings to import",imported,null,false);if(choose.ShowDialog(this)!=DialogResult.OK)return;
@@ -202,12 +202,12 @@ sealed class MainWindow:Form {
         if(candidate.Equals(live,StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".previous",StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".before-v02",StringComparison.OrdinalIgnoreCase) || candidate.Equals(Path.Combine(Path.GetDirectoryName(live)!,"reminders.json"),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Choose a file outside the application's live data and recovery files.");
     }
     void Backup() {
-        using var dialog=new SaveFileDialog{Filter="Meeting Directory backup (*.json)|*.json",FileName="MeetingDirectory-"+DateTime.Now.ToString("yyyy-MM-dd")+".json"};
+        using var dialog=new SaveFileDialog{Filter="CallKeeper backup (*.json)|*.json",FileName="MeetingDirectory-"+DateTime.Now.ToString("yyyy-MM-dd")+".json"};
         if(dialog.ShowDialog(this)!=DialogResult.OK)return;
         try{ProtectLiveData(dialog.FileName);Store.Backup(dialog.FileName,meetings);MessageBox.Show(this,"Backup saved. It includes meeting links, passcodes, categories, favorites, reminders and exceptions.","Backup complete");}catch(Exception e){Ui.Error(this,e);}
     }
     void Restore() {
-        using var dialog=new OpenFileDialog{Filter="Meeting Directory backup (*.json)|*.json"};if(dialog.ShowDialog(this)!=DialogResult.OK)return;
+        using var dialog=new OpenFileDialog{Filter="CallKeeper backup (*.json)|*.json"};if(dialog.ShowDialog(this)!=DialogResult.OK)return;
         try {
             var imported=Store.Read(dialog.FileName);
             if(MessageBox.Show(this,$"Replace your {meetings.Count} meetings with the {imported.Count} meetings in this backup? To add shared meetings instead, cancel and use Import shared meetings.","Restore backup",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)==DialogResult.Yes)Commit(imported,null,true);
@@ -224,7 +224,7 @@ sealed class MainWindow:Form {
         if(!logged)MessageBox.Show(this,"The reminder appeared, but its delivery could not be saved. It may appear again after restarting.","Reminder history");
     }
     void Help() {
-        using var help=new TextWindow("Meeting Directory help",HelpText.Value+"\r\n\r\nData: "+store.PathName);help.ShowDialog(this);
+        using var help=new TextWindow("CallKeeper help",HelpText.Value+"\r\n\r\nData: "+store.PathName);help.ShowDialog(this);
     }
     protected override bool ProcessCmdKey(ref Message msg,Keys key) {
         switch(key){case Keys.Control|Keys.F:search.Focus();return true;case Keys.Control|Keys.N:Edit(null);return true;case Keys.Control|Keys.E:if(Selected!=null)Edit(Selected);return true;case Keys.Control|Keys.I:PasteInvitation();return true;case Keys.Control|Keys.D1:view.SelectedIndex=0;return true;case Keys.Control|Keys.D2:view.SelectedIndex=1;return true;case Keys.Control|Keys.D3:view.SelectedIndex=2;return true;case Keys.Control|Keys.D4:view.SelectedIndex=3;return true;case Keys.F5:RefreshRows();return true;case Keys.F1:Help();return true;}

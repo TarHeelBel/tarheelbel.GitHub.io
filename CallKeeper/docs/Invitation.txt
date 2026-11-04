@@ -1,0 +1,19 @@
+Subject: Try CallKeeper, an accessible way to organize your meetings
+
+Hi everyone,
+
+I'd like to invite you to try CallKeeper, the new name for Meeting Directory. It's a Windows program designed around screen readers and keyboard navigation that gives you one place to save, find and open your Zoom and Teams meetings.
+
+CallKeeper includes one-time and recurring schedules, time-zone conversion, favorites, categories, today's meetings, optional reminders and invitation importing. Choose a saved meeting and press Enter to open it in your usual meeting app or browser.
+
+Download CallKeeper 0.4:
+https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.4.0/CallKeeper_0.4_Windows.zip
+
+Extract the ZIP and open CallKeeper.exe. If you used Meeting Directory, back up and close it first; your saved meetings and settings load automatically on the same Windows account. No programming tools are needed.
+
+This is an unsigned 64-bit Windows preview, so Windows may display a publisher notice. Reminders work while CallKeeper is open, including when minimized.
+
+Please reply with what worked, anything confusing, and your screen reader and version. Please keep private meeting links, passcodes and backups out of feedback.
+
+Thanks for helping me make this useful!
+Belinda

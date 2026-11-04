@@ -146,7 +146,7 @@ sealed class ReminderWindow:Form {
 }
 static class HelpText {
     public const string Value="""
-MEETING DIRECTORY 0.3
+CALLKEEPER 0.4
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.

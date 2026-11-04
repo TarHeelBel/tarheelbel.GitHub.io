@@ -1,10 +1,17 @@
-MEETING DIRECTORY 0.3 - MENU BAR UPDATE
+CALLKEEPER 0.4 - RENAMED FROM MEETING DIRECTORY
+
+UPGRADE INSTRUCTIONS
+Back up your meetings and close Meeting Directory completely. Extract the CallKeeper release into a new folder and open CallKeeper.exe. Existing meetings and settings load automatically from the same data location. There is no need to import them. Both programs share the same instance lock; opening one while the other is running shows a message instead of opening a second editor.
+
+The saved directory remains %LOCALAPPDATA%\MeetingDirectory so existing data is preserved. Keep using CallKeeper after upgrading.
+
+CALLKEEPER 0.4 - MENU BAR UPDATE
 
 UPDATING
 1. In the current version, back up your directory before upgrading.
 2. Close the old application completely.
 3. Extract this download into a new folder.
-4. Open MeetingDirectory.exe in that folder.
+4. Open CallKeeper.exe in that folder.
 Your saved meetings and settings load automatically. No import or restore is needed. Use the new executable going forward. No PowerShell, VS Code or separate .NET installation is needed.
 
 WHAT CHANGED
@@ -23,7 +30,7 @@ Compiled as a self-contained 64-bit Windows executable. All 61 automated schedul
 QUICK FIRST CHECK
 Open the application, press Alt+F, and listen for the File menu. Arrow through the commands. Press Escape to close it. Your current meeting selection should remain available.
 
-MEETING DIRECTORY 0.3
+CALLKEEPER 0.4
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.

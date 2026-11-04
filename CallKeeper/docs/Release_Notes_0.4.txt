@@ -1,0 +1,10 @@
+CallKeeper 0.4
+
+Meeting Directory is now named CallKeeper.
+The window title, menus, About box, help, executable and release download use the new name. The project source folder is now CallKeeper.
+
+Existing meeting files and reminder history remain in the original MeetingDirectory data folder. The shared instance lock is retained to protect that data when an older program is open. No import or data conversion is needed for the rename.
+
+Upgrade: back up, close the older application, extract the new ZIP and open CallKeeper.exe.
+
+The application remains an unsigned Windows x64 preview. Reminders require it to stay open. Screen-reader behavior should be checked on Windows after upgrading.

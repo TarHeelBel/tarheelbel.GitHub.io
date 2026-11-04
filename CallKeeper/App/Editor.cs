@@ -21,7 +21,7 @@ sealed class Editor:Form {
     readonly ComboBox weekday=Choice("Monthly weekday",Enum.GetNames<DayOfWeek>());
     readonly CheckBox favorite=Ui.Named(new CheckBox{Text="Favorite",AutoSize=true},"Favorite meeting");
     readonly ComboBox category=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDown,MaxLength=100},"Category; choose or type your own");
-    readonly ComboBox reminder=Choice("Reminder; works while Meeting Directory is open","Off","At meeting time","5 minutes before","10 minutes before","15 minutes before","30 minutes before","1 hour before","1 day before");
+    readonly ComboBox reminder=Choice("Reminder; works while CallKeeper is open","Off","At meeting time","5 minutes before","10 minutes before","15 minutes before","30 minutes before","1 hour before","1 day before");
     readonly TextBox notes=Ui.Named(new TextBox{Multiline=true,Height=85,ScrollBars=ScrollBars.Vertical,AcceptsReturn=true},"Meeting notes");
     static ComboBox Choice(string name,params string[] values) {
         var c=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList},name);c.Items.AddRange(values);c.SelectedIndex=0;return c;
