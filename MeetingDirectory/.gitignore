@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+release*/
+*.user
+*.suo
+meetings*.json*
+reminders.json*

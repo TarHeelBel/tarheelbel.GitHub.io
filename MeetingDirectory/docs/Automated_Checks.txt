@@ -1,0 +1,61 @@
+PASS First Tuesday
+PASS Third Tuesday
+PASS Exclude second Tuesday
+PASS Last Friday
+PASS No fifth Tuesday in November
+PASS Skip month missing day 31
+PASS Spring gap has no instant
+PASS Fall overlap chooses earlier occurrence
+PASS Daily schedule skips nonexistent spring time
+PASS Include exact start
+PASS Exclude past one-time meeting
+PASS Respect recurrence end date
+PASS Reject lookalike host
+PASS Reject local file launch
+PASS Reject deceptive userinfo
+PASS Reject platform mismatch
+PASS Require weekly weekdays
+PASS JSON round trip
+PASS Retain previous save
+PASS Reject malformed backup
+PASS Reject duplicate identifiers
+PASS Reject invalid save
+PASS Failed save preserves data
+PASS Skipped occurrence absent from Today
+PASS Skipped occurrence absent from Next
+PASS Moved occurrence comes from a different original day
+PASS Moved time uses meeting time zone
+PASS Moved occurrence removed from original date
+PASS Today retains earlier start independently of current time
+PASS Moved one-time meeting used by Next
+PASS Reject exception outside monthly schedule
+PASS Reject duplicate exceptions
+PASS Reject moved occurrence in DST gap
+PASS Reminder due ten minutes before
+PASS Reminder not early
+PASS Delivered reminder does not repeat
+PASS Off produces no reminders
+PASS No reminder for skipped occurrence
+PASS At-start reminder tolerates timer delay
+PASS No stale reminder for past meeting
+PASS Import keeps existing ID and adds new entry
+PASS Import keeps category and disables personal settings
+PASS Import skips separately identified duplicate schedule
+PASS Invitation detects direct link
+PASS Invitation extracts name, platform and passcode
+PASS Invitation extracts date, AM/PM time and daily recurrence
+PASS Invitation recognizes Eastern zone
+PASS Invitation preserves original in notes
+PASS Invitation rejects spoofed and unrelated links
+PASS Invitation offers multiple meeting links
+PASS Bare invite leaves unknown date and time for review
+PASS Legacy directory loads with safe defaults
+PASS New settings and exceptions survive backup round trip
+PASS Next finds distant rescheduled one-time meeting
+PASS Same-time moved occurrences keep separate reminder identities
+PASS Today handles 25-hour local day
+PASS Today handles 23-hour local day
+PASS Reject invalid reminder interval
+PASS Reject malformed category
+PASS Shared link may serve distinct meeting names
+61 checks passed.

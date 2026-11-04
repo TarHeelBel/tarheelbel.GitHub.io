@@ -1,0 +1,60 @@
+MEETING DIRECTORY 0.3 - MENU BAR UPDATE
+
+UPDATING
+1. In the current version, back up your directory before upgrading.
+2. Close the old application completely.
+3. Extract this download into a new folder.
+4. Open MeetingDirectory.exe in that folder.
+Your saved meetings and settings load automatically. No import or restore is needed. Use the new executable going forward. No PowerShell, VS Code or separate .NET installation is needed.
+
+WHAT CHANGED
+A standard Windows Forms menu bar now contains the helpful commands. The main window retains only Open meeting and Add meeting buttons, plus Search, View, Category, the meeting list and meeting details. Existing shortcuts remain available.
+
+Press Alt or F10 to reach the menu bar, then use arrows and Enter.
+Alt+F: File - Paste invitation, Import shared meetings, Export selected meetings, Back up, Restore backup, Exit.
+Alt+M: Meeting - Add, Edit, Open, Mark or remove favorite, Manage exceptions, Delete.
+Alt+V: View - Today, Upcoming, Favorites, All meetings, Search, Category filter, Refresh.
+Alt+H: Help - User guide, Keyboard shortcuts, About.
+Escape closes a menu. Keyboard shortcuts appear beside menu commands where applicable. View choices and favorite status have checkmarks. Commands that need a selected meeting are disabled when there is no selection.
+
+VALIDATION
+Compiled as a self-contained 64-bit Windows executable. All 61 automated schedule, storage and feature checks passed. This menu update has not been tested interactively with JAWS, NVDA or Narrator; please verify Alt navigation, command announcements and focus return after closing a menu. The earlier version passed the user's hands-on Windows and JAWS checks. The executable remains unsigned and Windows may display a publisher notice.
+
+QUICK FIRST CHECK
+Open the application, press Alt+F, and listen for the File menu. Arrow through the commands. Press Escape to close it. Your current meeting selection should remain available.
+
+MEETING DIRECTORY 0.3
+
+MENU BAR
+Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
+Only Open meeting and Add meeting buttons remain on the main window. All other commands are available through the menus. Existing keyboard shortcuts continue to work.
+
+QUICK KEYS
+Ctrl+N adds a meeting. Ctrl+F searches. Ctrl+E edits the selected meeting. Ctrl+I opens Paste invitation. Ctrl+1 Today's meetings; Ctrl+2 Upcoming; Ctrl+3 Favorites; Ctrl+4 All meetings. Enter on the meeting list opens the selected link. F5 refreshes; F1 opens this help. Tab and Shift+Tab move between controls; arrows browse choices; Space checks days and monthly positions.
+
+TODAY, UPCOMING AND FAVORITES
+Today includes all starts on today's date in your computer's current local time zone, including calls that have already started. No end times or live attendance are tracked. Upcoming lists each meeting's next occurrence. Favorites lists your marked meetings even if they have no upcoming occurrence. Search and category filters apply to each view. Saving a meeting reveals it in All meetings. Meeting > Mark as favorite toggles the selected meeting; it is also available in the editor.
+
+CATEGORIES
+Choose or type one category in the meeting editor, such as Community, Work, Classes or Personal. The main window can filter by that category, All categories, or Uncategorized. Categories are optional; searching still matches name and notes.
+
+PASTE INVITATION
+Paste the full invitation and choose Analyze invitation. Choose a link if multiple links are found, then Review before saving. Supported direct Zoom and Teams links are recognized without visiting websites. Topic/subject, explicit dates in ISO or English month format, AM/PM time, common US time zones, ID, passcode and explicit daily recurrence may be suggested. Other recurrence patterns must be set manually. Missing fields have defaults: review name, date, time, time zone and recurrence before saving. The full original invitation is kept in Notes. Shortened links, protected email links, attachments and calendar files are not decoded. No invitation is saved until you press Save in the meeting editor.
+
+OPTIONAL REMINDERS
+In the meeting editor choose Off, At meeting time, 5, 10, 15 or 30 minutes before, 1 hour before, or 1 day before. Reminders work only while this application is open, including when minimized. They do not wake the computer and do not run after you exit. The app checks every 15 seconds. On startup or resume a missed advance reminder can appear if the meeting has not yet started. A reminder window and the Windows alert sound notify you; actual speech depends on your screen reader and Windows sound settings. Select a reminder and activate Open meeting, Dismiss highlighted, or Close all. A local alert log avoids repeating already delivered reminders across restarts. Imported shared meetings have reminders off until you enable them.
+
+EXCEPTIONS
+Select a meeting and choose Meeting > Manage exceptions. Enter the original scheduled date in the meeting's own time zone. Choose Skip this occurrence or Change this occurrence's date or time. For a change, choose the new date and time in the same time zone. Activate Add or update exception, then Save exceptions. Removing an exception restores the normal occurrence. This only changes the directory, never the host's actual meeting. A schedule edit that invalidates existing exceptions is rejected; first remove those exceptions if the series itself must change.
+
+SHARING
+File > Export selected meetings opens a checked list. Only checked meetings are exported. Notes and separate passcode fields are excluded unless you choose to include them, but links themselves can contain passcodes. Favorites and reminders are personal and excluded. No file is sent automatically. File > Import shared meetings lets you review and select entries; it adds new entries and skips duplicates without changing existing ones. Existing identifiers are considered duplicates; separately created entries with the same name, link and schedule are also skipped. A duplicate never overwrites your version. Use Edit for intentional changes. Imported reminders stay off and favorites stay unmarked.
+
+BACKUP AND UPGRADE
+Back up includes all meeting data. Restore replaces the directory after confirmation; Import shared meetings adds instead. Existing version 0.1 directories load automatically. Before the first 0.2 save, the prior data is retained as meetings.json.before-v02. After upgrading use the new executable: editing with the old application can discard fields it does not understand. Data files and backups include readable links and passcodes, so protect them. No cloud syncing, analytics, account system or automatic joining is included.
+
+SCHEDULE RULES
+Schedules use the stored meeting time zone and its daylight saving rules. A nonexistent spring-forward time is skipped for recurring meetings and rejected for a one-time meeting or moved occurrence. A repeated fall-back time uses its earlier occurrence once. Dates absent from a month are skipped. Exceptions can move occurrences into or out of Today and Upcoming. If two occurrences are moved to the same instant, Today shows both and reminders treat them separately.
+
+SUPPORTED LINKS
+Use complete direct HTTPS Zoom links under zoom.us, zoom.com or zoomgov.com, or Teams links at teams.microsoft.com, teams.live.com or teams.cloud.microsoft. Your configured meeting application or browser opens them. The meeting host may require sign-in. Meeting ID and passcode fields are reference information; they do not modify the link.
