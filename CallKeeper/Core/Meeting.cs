@@ -1,6 +1,6 @@
 using System.Text.Json;
 namespace MeetingDirectory;
-public enum Pattern { Once, Daily, Weekly, MonthlyDate, MonthlyWeekday }
+public enum Pattern { Once, Daily, Weekly, MonthlyDate, MonthlyWeekday, Unscheduled }
 public sealed record Meeting {
     public Guid Id { get; init; } = Guid.NewGuid();
     public string Name { get; init; } = "";
@@ -20,6 +20,7 @@ public sealed record Meeting {
     public DayOfWeek MonthWeekday { get; init; } = DayOfWeek.Tuesday;
     public bool Favorite {get;init;}
     public string Category {get;init;} = "";
+    public string ZoomAccount {get;init;} = "";
     public int? ReminderMinutes {get;init;}
     public MeetingException[] Exceptions {get;init;} = [];
     public void Validate() {
@@ -29,6 +30,8 @@ public sealed record Meeting {
         if (Link is null || MeetingId is null || Passcode is null || Notes is null) throw new ArgumentException("Meeting text fields cannot be null.");
         ValidateLink(Link,Platform);
         var zone=TimeZoneInfo.FindSystemTimeZoneById(ZoneId);
+        if(ZoomAccount is null || ZoomAccount.Length>100)throw new ArgumentException("Use a Zoom account label of at most 100 characters.");
+        if(Pattern==Pattern.Unscheduled && ReminderMinutes!=null)throw new ArgumentException("Set a schedule before enabling reminders.");
         if(Category is null || Category.Length>100)throw new ArgumentException("Use a category of at most 100 characters.");
         if(ReminderMinutes is <0 or >1440)throw new ArgumentException("Reminder minutes must be between 0 and 1440.");
         if(Exceptions is null || Exceptions.Length>10000 || Exceptions.Any(e=>e is null))throw new ArgumentException("Meeting exceptions are invalid.");
@@ -97,6 +100,7 @@ public static class Occurrences {
         return result.OrderBy(x=>x.At).ThenBy(x=>x.OriginalDate).ToArray();
     }
     public static DateTimeOffset? Next(Meeting m,DateTimeOffset now) {
+        if(m.Pattern==Pattern.Unscheduled)return null;
         var zone=TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId);
         DateTimeOffset? best=null;
         foreach(var e in m.Exceptions) {
@@ -119,6 +123,7 @@ public static class Occurrences {
         return best;
     }
     public static string Schedule(Meeting m)=>m.Pattern switch {
+        Pattern.Unscheduled=>"No schedule (saved meeting link)",
         Pattern.Once=>$"Once on {m.Start:dddd, MMMM d, yyyy}",
         Pattern.Daily=>"Daily",
         Pattern.Weekly=>"Weekly on "+string.Join(", ",m.Days),

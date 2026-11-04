@@ -1,0 +1,43 @@
+CALLKEEPER 0.5: IMPORTING YOUR ZOOM LINKS
+
+Quick start
+1. Open CallKeeper_Import_Template.xlsx in Excel.
+2. On Guide, rename Account 1 through Account 7 to your account labels.
+3. Switch to Meetings. Starting at row 2, enter MeetingName, the complete MeetingLink, and ZoomAccount. Use the same account spelling for related links. One meeting per row. The template has 100 blank rows and can be extended.
+4. For reusable room links, leave Schedule and date/time fields blank. You can add schedules later in Edit Meeting. The links appear in All meetings, not Today or Upcoming.
+5. Save the workbook as your master copy. With Meetings active, Save a Copy or Save As CSV UTF-8 (Comma delimited). Export only that sheet. Keep the headers unchanged.
+6. In CallKeeper, make a backup using File > Back up. Then choose File > Import CSV. Select your CSV, review the checked meetings, and choose Import checked. Space changes a checkbox. Cancel saves nothing.
+7. Press Ctrl+4 for All meetings. Tab to Filter by Zoom account and choose your account label. All Zoom accounts clears this filter.
+
+Ctrl+S activates Save in both Add Meeting and Edit Meeting, including while you are writing Notes. Validation is the same as using the Save button. A validation message leaves your changes in the editor.
+
+Account labels
+ZoomAccount is an organizational label of up to 100 characters, such as the community or host account name. It is stored with the meeting and included in backups and shared exports. It does not sign in to Zoom or switch your active Zoom account. Zoom's own sign-in and meeting permissions still apply. Never put an account password in this file.
+
+CSV fields
+The minimum headers are MeetingName and MeetingLink. The template includes all supported columns. Header spelling can contain spaces and is not case-sensitive. Unknown or duplicate columns are rejected so a typo does not silently discard data.
+MeetingName: required, 1 to 200 characters.
+MeetingLink: required, full direct HTTPS Zoom or Teams link; preserve the entire query string.
+ZoomAccount: recommended for Zoom; leave blank for Teams.
+Platform: optional, Zoom or Teams. Blank detects it from the link.
+MeetingID: optional text. Keep leading zeros.
+Passcode: optional meeting passcode, stored as text; not an account password.
+Category: optional group of up to 100 characters, such as Community.
+Schedule: blank or Unscheduled saves a room link. Other choices are Once, Daily, Weekly, MonthlyDate and MonthlyWeekday.
+StartDate: required for scheduled entries, yyyy-mm-dd, for example 2026-11-04.
+StartTime: required for scheduled entries, 24-hour HH:mm such as 19:00, or h:mm AM/PM such as 7:00 PM.
+TimeZone: required for scheduled entries. Eastern, Central, Mountain, Pacific and UTC are accepted, as are exact Windows/IANA time-zone identifiers. US regional names follow daylight saving rules where applicable; for Arizona or another region use its exact zone.
+Weekdays: Weekly only; names separated by semicolons, for example Monday;Wednesday.
+MonthDay: MonthlyDate only, 1 through 31. Months without that day are skipped.
+MonthPositions: MonthlyWeekday only; First;Third, for example. Supports First, Second, Third, Fourth, Fifth and Last.
+MonthWeekday: MonthlyWeekday only; one weekday name, for example Tuesday.
+EndDate: optional last date for recurring meetings, yyyy-mm-dd.
+Notes: optional text. Excel CSV UTF-8 exports quoted commas, quotes and line breaks correctly.
+
+Leave date, time, weekday, monthly and end-date fields blank for unscheduled links. Supply only the recurrence fields relevant to your chosen schedule.
+
+Review and error handling
+Nothing is saved until you choose Import checked. If any CSV line is invalid, no meetings are imported; a readable, selectable error window lists the line numbers. Correct the spreadsheet, export CSV UTF-8 again, and retry. Blank rows are ignored. The import accepts up to 10,000 rows and a 20 MB file, and your combined directory cannot exceed 10,000 meetings.
+Existing meetings are kept. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
+
+Your workbook and CSV may contain private meeting links and passcodes. Store and share them accordingly. Existing saved directories and backups still load; older entries have no Zoom account label until you add one.

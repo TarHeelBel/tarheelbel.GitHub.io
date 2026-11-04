@@ -60,8 +60,8 @@ sealed class SelectionWindow:Form {
         if(exporting)layout.Controls.Add(privateFields,0,4);
         var okay=Ui.Button(exporting?"&Export checked":"&Import checked",()=>{SelectedMeetings=list.CheckedIndices.Cast<int>().Select(i=>this.meetings[i]).ToList();if(SelectedMeetings.Count==0){MessageBox.Show(this,"Check at least one meeting.","Select meetings");return;}DialogResult=DialogResult.OK;Close();});
         var cancel=Ui.Button("Cancel",Close);CancelButton=cancel;layout.Controls.Add(Ui.Buttons(okay,cancel),0,5);Controls.Add(layout);
-        for(int i=0;i<this.meetings.Count;i++)list.Items.Add(this.meetings[i].Name+"; "+this.meetings[i].Platform+"; "+Occurrences.Schedule(this.meetings[i]),exporting?this.meetings[i].Id==selected:true);
-        list.SelectedIndexChanged+=(_,_)=>{if(list.SelectedIndex<0)return;var m=this.meetings[list.SelectedIndex];details.Text=$"{m.Name}\r\n{m.Platform}\r\n{m.Link}\r\n{Occurrences.Schedule(m)} at {m.Time:h:mm tt}\r\nTime zone: {TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId).DisplayName}\r\nCategory: {m.Category}\r\nExceptions: {m.Exceptions.Length}\r\nNotes: {m.Notes}";};
+        for(int i=0;i<this.meetings.Count;i++)list.Items.Add(this.meetings[i].Name+"; "+this.meetings[i].Platform+(this.meetings[i].ZoomAccount!=""?"; Zoom account: "+this.meetings[i].ZoomAccount:"")+"; "+Occurrences.Schedule(this.meetings[i]),exporting?this.meetings[i].Id==selected:true);
+        list.SelectedIndexChanged+=(_,_)=>{if(list.SelectedIndex<0)return;var m=this.meetings[list.SelectedIndex];details.Text=$"{m.Name}\r\n{m.Platform}\r\n{m.Link}\r\n{Occurrences.Schedule(m)}{(m.Pattern==Pattern.Unscheduled?"":$" at {m.Time:h:mm tt}\r\nTime zone: {TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId).DisplayName}")}\r\nZoom account label: {m.ZoomAccount}\r\nCategory: {m.Category}\r\nExceptions: {m.Exceptions.Length}\r\nNotes: {m.Notes}";};
         Shown+=(_,_)=>{if(list.Items.Count>0)list.SelectedIndex=0;list.Focus();};
     }
     void CheckAll(bool value){for(int i=0;i<list.Items.Count;i++)list.SetItemChecked(i,value);}
@@ -146,10 +146,10 @@ sealed class ReminderWindow:Form {
 }
 static class HelpText {
     public const string Value="""
-CALLKEEPER 0.4
+CALLKEEPER 0.5
 
 MENU BAR
-Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
+Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category, Zoom account filter and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
 Only Open meeting and Add meeting buttons remain on the main window. All other commands are available through the menus. Existing keyboard shortcuts continue to work.
 
 QUICK KEYS
@@ -181,5 +181,9 @@ Schedules use the stored meeting time zone and its daylight saving rules. A none
 
 SUPPORTED LINKS
 Use complete direct HTTPS Zoom links under zoom.us, zoom.com or zoomgov.com, or Teams links at teams.microsoft.com, teams.live.com or teams.cloud.microsoft. Your configured meeting application or browser opens them. The meeting host may require sign-in. Meeting ID and passcode fields are reference information; they do not modify the link.
+
+CSV IMPORT AND ACCOUNT LABELS
+File > Import CSV accepts the supplied CSV UTF-8 template. Enter MeetingName, MeetingLink and a ZoomAccount label. Leave Schedule and date/time fields blank for reusable links. Review the checked list before importing. Errors show line numbers and save nothing. Use Ctrl+4 for All meetings and the Zoom account filter to browse your accounts. Labels organize links and do not change your Zoom sign-in. Existing meetings are kept and duplicates are skipped. Imported reminders are off.
+Ctrl+S saves in both Add Meeting and Edit Meeting. The supplied CSV_Import_Guide.txt explains all optional schedule columns.
 """;
 }

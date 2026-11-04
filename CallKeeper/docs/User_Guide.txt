@@ -1,11 +1,11 @@
-CALLKEEPER 0.4 - RENAMED FROM MEETING DIRECTORY
+CALLKEEPER 0.5 - RENAMED FROM MEETING DIRECTORY
 
 UPGRADE INSTRUCTIONS
 Back up your meetings and close Meeting Directory completely. Extract the CallKeeper release into a new folder and open CallKeeper.exe. Existing meetings and settings load automatically from the same data location. There is no need to import them. Both programs share the same instance lock; opening one while the other is running shows a message instead of opening a second editor.
 
 The saved directory remains %LOCALAPPDATA%\MeetingDirectory so existing data is preserved. Keep using CallKeeper after upgrading.
 
-CALLKEEPER 0.4 - MENU BAR UPDATE
+CALLKEEPER 0.5 - MENU BAR UPDATE
 
 UPDATING
 1. In the current version, back up your directory before upgrading.
@@ -30,7 +30,7 @@ Compiled as a self-contained 64-bit Windows executable. All 61 automated schedul
 QUICK FIRST CHECK
 Open the application, press Alt+F, and listen for the File menu. Arrow through the commands. Press Escape to close it. Your current meeting selection should remain available.
 
-CALLKEEPER 0.4
+CALLKEEPER 0.5
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
@@ -65,3 +65,48 @@ Schedules use the stored meeting time zone and its daylight saving rules. A none
 
 SUPPORTED LINKS
 Use complete direct HTTPS Zoom links under zoom.us, zoom.com or zoomgov.com, or Teams links at teams.microsoft.com, teams.live.com or teams.cloud.microsoft. Your configured meeting application or browser opens them. The meeting host may require sign-in. Meeting ID and passcode fields are reference information; they do not modify the link.
+
+
+CALLKEEPER 0.5: IMPORTING YOUR ZOOM LINKS
+
+Quick start
+1. Open CallKeeper_Import_Template.xlsx in Excel.
+2. On Guide, rename Account 1 through Account 7 to your account labels.
+3. Switch to Meetings. Starting at row 2, enter MeetingName, the complete MeetingLink, and ZoomAccount. Use the same account spelling for related links. One meeting per row. The template has 100 blank rows and can be extended.
+4. For reusable room links, leave Schedule and date/time fields blank. You can add schedules later in Edit Meeting. The links appear in All meetings, not Today or Upcoming.
+5. Save the workbook as your master copy. With Meetings active, Save a Copy or Save As CSV UTF-8 (Comma delimited). Export only that sheet. Keep the headers unchanged.
+6. In CallKeeper, make a backup using File > Back up. Then choose File > Import CSV. Select your CSV, review the checked meetings, and choose Import checked. Space changes a checkbox. Cancel saves nothing.
+7. Press Ctrl+4 for All meetings. Tab to Filter by Zoom account and choose your account label. All Zoom accounts clears this filter.
+
+Ctrl+S activates Save in both Add Meeting and Edit Meeting, including while you are writing Notes. Validation is the same as using the Save button. A validation message leaves your changes in the editor.
+
+Account labels
+ZoomAccount is an organizational label of up to 100 characters, such as the community or host account name. It is stored with the meeting and included in backups and shared exports. It does not sign in to Zoom or switch your active Zoom account. Zoom's own sign-in and meeting permissions still apply. Never put an account password in this file.
+
+CSV fields
+The minimum headers are MeetingName and MeetingLink. The template includes all supported columns. Header spelling can contain spaces and is not case-sensitive. Unknown or duplicate columns are rejected so a typo does not silently discard data.
+MeetingName: required, 1 to 200 characters.
+MeetingLink: required, full direct HTTPS Zoom or Teams link; preserve the entire query string.
+ZoomAccount: recommended for Zoom; leave blank for Teams.
+Platform: optional, Zoom or Teams. Blank detects it from the link.
+MeetingID: optional text. Keep leading zeros.
+Passcode: optional meeting passcode, stored as text; not an account password.
+Category: optional group of up to 100 characters, such as Community.
+Schedule: blank or Unscheduled saves a room link. Other choices are Once, Daily, Weekly, MonthlyDate and MonthlyWeekday.
+StartDate: required for scheduled entries, yyyy-mm-dd, for example 2026-11-04.
+StartTime: required for scheduled entries, 24-hour HH:mm such as 19:00, or h:mm AM/PM such as 7:00 PM.
+TimeZone: required for scheduled entries. Eastern, Central, Mountain, Pacific and UTC are accepted, as are exact Windows/IANA time-zone identifiers. US regional names follow daylight saving rules where applicable; for Arizona or another region use its exact zone.
+Weekdays: Weekly only; names separated by semicolons, for example Monday;Wednesday.
+MonthDay: MonthlyDate only, 1 through 31. Months without that day are skipped.
+MonthPositions: MonthlyWeekday only; First;Third, for example. Supports First, Second, Third, Fourth, Fifth and Last.
+MonthWeekday: MonthlyWeekday only; one weekday name, for example Tuesday.
+EndDate: optional last date for recurring meetings, yyyy-mm-dd.
+Notes: optional text. Excel CSV UTF-8 exports quoted commas, quotes and line breaks correctly.
+
+Leave date, time, weekday, monthly and end-date fields blank for unscheduled links. Supply only the recurrence fields relevant to your chosen schedule.
+
+Review and error handling
+Nothing is saved until you choose Import checked. If any CSV line is invalid, no meetings are imported; a readable, selectable error window lists the line numbers. Correct the spreadsheet, export CSV UTF-8 again, and retry. Blank rows are ignored. The import accepts up to 10,000 rows and a 20 MB file, and your combined directory cannot exceed 10,000 meetings.
+Existing meetings are kept. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
+
+Your workbook and CSV may contain private meeting links and passcodes. Store and share them accordingly. Existing saved directories and backups still load; older entries have no Zoom account label until you add one.

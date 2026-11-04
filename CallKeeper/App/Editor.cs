@@ -8,9 +8,10 @@ sealed class Editor:Form {
     readonly TextBox name=Ui.Named(new TextBox(),"Meeting name");
     readonly ComboBox platform=Choice("Platform","Zoom","Teams");
     readonly TextBox link=Ui.Named(new TextBox(),"Full meeting link");
+    readonly ComboBox zoomAccount=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDown,MaxLength=100},"Zoom account label; choose or type a label");
     readonly TextBox meetingId=Ui.Named(new TextBox(),"Zoom meeting ID, optional");
     readonly TextBox passcode=Ui.Named(new TextBox(),"Zoom passcode, optional");
-    readonly ComboBox pattern=Choice("Schedule","One-time","Daily","Weekly","Monthly by date","Monthly by weekday");
+    readonly ComboBox pattern=Choice("Schedule","One-time","Daily","Weekly","Monthly by date","Monthly by weekday","No schedule (saved link)");
     readonly DateTimePicker start=Ui.Named(new DateTimePicker{Format=DateTimePickerFormat.Long},"Date or recurring start date");
     readonly DateTimePicker time=Ui.Named(new DateTimePicker{Format=DateTimePickerFormat.Custom,CustomFormat="h:mm tt",ShowUpDown=true},"Meeting time in selected meeting time zone");
     readonly ComboBox zone=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList},"Meeting time zone");
@@ -26,7 +27,7 @@ sealed class Editor:Form {
     static ComboBox Choice(string name,params string[] values) {
         var c=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList},name);c.Items.AddRange(values);c.SelectedIndex=0;return c;
     }
-    public Editor(Meeting? existing,IEnumerable<string>? categories=null,bool draft=false) {
+    public Editor(Meeting? existing,IEnumerable<string>? categories=null,bool draft=false,IEnumerable<string>? zoomAccounts=null) {
         original=existing??new Meeting();Text=draft?"Review invitation before saving":existing is null?"Add meeting":"Edit meeting";
         Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;Size=new Size(850,850);MinimumSize=new Size(650,550);StartPosition=FormStartPosition.CenterParent;
         var root=new TableLayoutPanel{Dock=DockStyle.Fill,RowCount=2,ColumnCount=1,Padding=new Padding(10)};
@@ -41,7 +42,7 @@ sealed class Editor:Form {
             control.Dock=DockStyle.Fill;control.Margin=new Padding(3,7,3,7);control.TabIndex=row*2+1;l.TabIndex=row*2;
             fields.Controls.Add(l,0,row);fields.Controls.Add(control,1,row++);
         }
-        Field("&Name:",name);Field("&Platform:",platform);Field("Meeting &link:",link);
+        Field("&Name:",name);Field("&Platform:",platform);Field("Zoom account label:",zoomAccount);Field("Meeting &link:",link);
         Field("Zoom meeting &ID (optional):",meetingId);Field("Zoom passcode (optional):",passcode);
         Field("Re&currence:",pattern);Field("&Date or start date:",start);Field("&Time in meeting time zone:",time);Field("Time &zone:",zone);
         Field("&End date (optional):",end);Field("Weekly da&ys:",days);Field("Monthly date n&umber:",monthDay);
@@ -53,6 +54,7 @@ sealed class Editor:Form {
         root.Controls.Add(Ui.Buttons(save,cancel),0,1);Controls.Add(root);
         days.Items.AddRange(Enum.GetNames<DayOfWeek>());ordinals.Items.AddRange(["First","Second","Third","Fourth","Fifth","Last"]);
         foreach(var z in TimeZoneInfo.GetSystemTimeZones())zone.Items.Add(new ZoneItem(z));
+        zoomAccount.Items.AddRange((zoomAccounts??[]).Where(x=>!string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.CurrentCultureIgnoreCase).Order().ToArray());zoomAccount.Text=original.ZoomAccount;
         name.Text=original.Name;platform.SelectedItem=original.Platform;link.Text=original.Link;meetingId.Text=original.MeetingId;passcode.Text=original.Passcode;
         pattern.SelectedIndex=(int)original.Pattern;start.Value=original.Start.ToDateTime(TimeOnly.MinValue);
         time.Value=DateTime.Today.Add(original.Time.ToTimeSpan());end.Value=(original.End??original.Start).ToDateTime(TimeOnly.MinValue);end.Checked=original.End!=null;
@@ -72,10 +74,11 @@ sealed class Editor:Form {
         FormClosing+=(_,e)=>{if(!saved && Changed() && MessageBox.Show(this,"Discard your unsaved changes?","Close meeting editor",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)e.Cancel=true;};
     }
     void UpdateFields() {
-        var p=(Pattern)pattern.SelectedIndex;end.Enabled=p!=Pattern.Once;days.Enabled=p==Pattern.Weekly;monthDay.Enabled=p==Pattern.MonthlyDate;
-        ordinals.Enabled=weekday.Enabled=p==Pattern.MonthlyWeekday;meetingId.Enabled=passcode.Enabled=platform.SelectedIndex==0;
+        var p=(Pattern)pattern.SelectedIndex;start.Enabled=time.Enabled=zone.Enabled=p!=Pattern.Unscheduled;reminder.Enabled=p!=Pattern.Unscheduled;if(p==Pattern.Unscheduled)reminder.SelectedIndex=0;end.Enabled=p!=Pattern.Once && p!=Pattern.Unscheduled;days.Enabled=p==Pattern.Weekly;monthDay.Enabled=p==Pattern.MonthlyDate;
+        ordinals.Enabled=weekday.Enabled=p==Pattern.MonthlyWeekday;zoomAccount.Enabled=meetingId.Enabled=passcode.Enabled=platform.SelectedIndex==0;
     }
     Meeting Collect()=>original with {
+        ZoomAccount=platform.SelectedIndex==0?zoomAccount.Text.Trim():"",
         Favorite=favorite.Checked,Category=category.Text.Trim(),ReminderMinutes=reminder.SelectedIndex==0?null:reminder.SelectedIndex<8?new[]{0,5,10,15,30,60,1440}[reminder.SelectedIndex-1]:original.ReminderMinutes,
         Name=name.Text.Trim(),Platform=platform.Text,Link=link.Text.Trim(),MeetingId=platform.SelectedIndex==0?meetingId.Text.Trim():"",Passcode=platform.SelectedIndex==0?passcode.Text:"",Notes=notes.Text,
         Pattern=(Pattern)pattern.SelectedIndex,Start=DateOnly.FromDateTime(start.Value),Time=TimeOnly.FromDateTime(time.Value),
@@ -86,6 +89,10 @@ sealed class Editor:Form {
     string? initial;
     protected override void OnShown(EventArgs e) {base.OnShown(e);initial=System.Text.Json.JsonSerializer.Serialize(Collect());}
     bool Changed()=>initial!=null && initial!=System.Text.Json.JsonSerializer.Serialize(Collect());
+    protected override bool ProcessCmdKey(ref Message msg,Keys key) {
+        if(key==(Keys.Control|Keys.S)){Save();return true;}
+        return base.ProcessCmdKey(ref msg,key);
+    }
     void Save() {
         try {var m=Collect();m.Validate();Result=m;saved=true;DialogResult=DialogResult.OK;Close();}
         catch(Exception e){Ui.Error(this,e);}

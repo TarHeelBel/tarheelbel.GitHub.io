@@ -2,9 +2,9 @@
 
 A Windows meeting organizer designed around screen readers and keyboard navigation. Save, find and open Zoom and Microsoft Teams meetings from one directory.
 
-## Download version 0.4
+## Download version 0.5
 
-[Download CallKeeper 0.4 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.4.0/CallKeeper_0.4_Windows.zip).
+[Download CallKeeper 0.5 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.5.0/CallKeeper_0.5_Windows.zip).
 
 GitHub's **Build CallKeeper** workflow also builds a Windows download and publishes it under this repository's Releases after the checks pass.
 
@@ -42,7 +42,7 @@ dotnet run --project CallKeeper/Checks/Checks.csproj -c Release
 dotnet publish CallKeeper/App/App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o release
 ```
 
-Run these commands from the repository root. The original build passed 61 automated checks; results are in [Automated_Checks.txt](docs/Automated_Checks.txt). The original version received hands-on Windows/JAWS testing from the organizer. The 0.4 menus and other screen readers still need further hands-on testing.
+Run these commands from the repository root. Version 0.5 passes 86 automated checks; results are in [Automated_Checks.txt](docs/Automated_Checks.txt). The original version received hands-on Windows/JAWS testing from the organizer. The new 0.5 controls and Ctrl+S need hands-on JAWS/NVDA testing.
 
 ## Data and feedback
 
@@ -51,3 +51,6 @@ Your saved directory is stored in `%LOCALAPPDATA%\MeetingDirectory`. Backups con
 For feedback, use this repository's Issues page. Include the application version, Windows and screen-reader versions, steps, and the exact announcement or error with private details removed.
 
 Independent project; not affiliated with Zoom or Microsoft.
+
+
+Version 0.5 adds Ctrl+S in Add/Edit Meeting and File > Import CSV, with Zoom account labels and filtering. See docs/CSV_Import_Guide.txt and templates/CallKeeper_Import_Template.xlsx. Account labels organize your directory; they do not change Zoom sign-in.

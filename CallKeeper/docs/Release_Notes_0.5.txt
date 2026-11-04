@@ -1,0 +1,10 @@
+CALLKEEPER 0.5
+- Ctrl+S saves in Add Meeting and Edit Meeting using the existing validation.
+- File > Import CSV imports multiple Zoom or Teams links with a review step and line-specific errors. Any invalid line prevents all importing.
+- Zoom account labels can be added or edited, searched and filtered. Labels organize entries; Zoom manages actual sign-in.
+- Saved links can have no schedule. Use All meetings to find and open them.
+- Excel and CSV import templates include space for 100 links and seven editable account labels.
+- Duplicate imports are skipped without overwriting existing meetings. Previous data and backups remain compatible.
+- Existing meeting data location and single-instance protection are unchanged.
+Automated checks cover 49 rooms across seven labels, CSV quoting and Unicode headers, recurrence validation, duplicates and legacy data. Native Windows build verified automatically. Hands-on JAWS/NVDA testing remains necessary for the new controls and Ctrl+S.
+Close any older CallKeeper or Meeting Directory window, extract the new ZIP, then open CallKeeper.exe. No development tools or PowerShell scripts are required.

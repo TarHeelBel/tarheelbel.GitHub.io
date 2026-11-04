@@ -6,8 +6,8 @@ I'd like to invite you to try CallKeeper, the new name for Meeting Directory. It
 
 CallKeeper includes one-time and recurring schedules, time-zone conversion, favorites, categories, today's meetings, optional reminders and invitation importing. Choose a saved meeting and press Enter to open it in your usual meeting app or browser.
 
-Download CallKeeper 0.4:
-https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.4.0/CallKeeper_0.4_Windows.zip
+Download CallKeeper 0.5:
+https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.5.0/CallKeeper_0.5_Windows.zip
 
 Extract the ZIP and open CallKeeper.exe. If you used Meeting Directory, back up and close it first; your saved meetings and settings load automatically on the same Windows account. No programming tools are needed.
 

@@ -30,7 +30,7 @@ public static class DirectoryFeatures {
         var result=current.ToList();int added=0,skipped=0;
         foreach(var m in imported) {
             m.Validate();
-            if(result.Any(x=>x.Id==m.Id || (x.Name.Equals(m.Name,StringComparison.OrdinalIgnoreCase) && x.Link==m.Link && x.Pattern==m.Pattern && x.Start==m.Start && x.Time==m.Time && x.ZoneId==m.ZoneId && x.End==m.End && x.Days.SequenceEqual(m.Days) && x.MonthDay==m.MonthDay && x.Ordinals.SequenceEqual(m.Ordinals) && x.MonthWeekday==m.MonthWeekday))) {skipped++;continue;}
+            if(result.Any(x=>x.Id==m.Id || (x.Name.Equals(m.Name,StringComparison.OrdinalIgnoreCase) && x.Link==m.Link && x.ZoomAccount.Equals(m.ZoomAccount,StringComparison.OrdinalIgnoreCase) && x.Pattern==m.Pattern && (m.Pattern==Pattern.Unscheduled || (x.Start==m.Start && x.Time==m.Time && x.ZoneId==m.ZoneId && x.End==m.End && x.Days.SequenceEqual(m.Days) && x.MonthDay==m.MonthDay && x.Ordinals.SequenceEqual(m.Ordinals) && x.MonthWeekday==m.MonthWeekday))))) {skipped++;continue;}
             // Import never enables alerts or changes personal favorites without asking.
             result.Add(m with{Favorite=false,ReminderMinutes=null});added++;
         }

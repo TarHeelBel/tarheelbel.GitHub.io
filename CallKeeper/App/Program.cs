@@ -23,13 +23,14 @@ static class Ui {
     public static void Launch(string link,string platform) {Meeting.ValidateLink(link,platform);Process.Start(new ProcessStartInfo(link){UseShellExecute=true});}
 }
 sealed record Row(Meeting Meeting,DateTimeOffset? Next,DateOnly? OriginalDate=null,bool Today=false) {
-    public override string ToString()=>Meeting.Name+"; "+Meeting.Platform+(Meeting.Favorite?"; favorite":"")+(Meeting.Category!=""?"; "+Meeting.Category:"")+"; "+(Next is {} t? t.ToLocalTime().ToString("dddd, MMMM d, yyyy 'at' h:mm tt")+(Today && t<DateTimeOffset.Now?"; started earlier today":""):"No upcoming occurrence");
+    public override string ToString()=>Meeting.Name+"; "+Meeting.Platform+(Meeting.Favorite?"; favorite":"")+(Meeting.ZoomAccount!=""?"; Zoom account: "+Meeting.ZoomAccount:"")+(Meeting.Category!=""?"; "+Meeting.Category:"")+"; "+(Next is {} t? t.ToLocalTime().ToString("dddd, MMMM d, yyyy 'at' h:mm tt")+(Today && t<DateTimeOffset.Now?"; started earlier today":""):Meeting.Pattern==Pattern.Unscheduled?"Saved link; no schedule":"No upcoming occurrence");
 }
 sealed class MainWindow:Form {
     readonly Store store; List<Meeting> meetings;
-    readonly TextBox search=Ui.Named(new TextBox{Dock=DockStyle.Fill},"Search meetings by name or notes");
+    readonly TextBox search=Ui.Named(new TextBox{Dock=DockStyle.Fill},"Search meetings by name, notes or Zoom account");
     readonly ComboBox view=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill},"Meeting view");
     readonly ComboBox category=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill},"Filter by category");
+    readonly ComboBox account=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill},"Filter by Zoom account");
     readonly ListBox list=Ui.Named(new ListBox{Dock=DockStyle.Fill,HorizontalScrollbar=true,IntegralHeight=false},"Meetings; times are in your computer's local time zone");
     readonly TextBox details=Ui.Named(new TextBox{Dock=DockStyle.Fill,Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical},"Selected meeting details");
     readonly ToolStripMenuItem favorite = new("Mark as &favorite");
@@ -41,20 +42,21 @@ sealed class MainWindow:Form {
     bool refreshingCategories;
     public MainWindow(Store store,List<Meeting> meetings) {
         this.store=store;this.meetings=meetings;reminderLog=new ReminderLog(Path.Combine(Path.GetDirectoryName(store.PathName)!,"reminders.json"));
-        Text="CallKeeper 0.4";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
+        Text="CallKeeper 0.5";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
         Size=new Size(1050,870);MinimumSize=new Size(720,650);StartPosition=FormStartPosition.CenterScreen;
-        var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=10,Padding=new Padding(12)};
-        for(int i=0;i<10;i++)layout.RowStyles.Add(new RowStyle(i==6?SizeType.Percent:i==8?SizeType.Percent:SizeType.AutoSize,i==6?50:i==8?50:0));
+        var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=12,Padding=new Padding(12)};
+        for(int i=0;i<12;i++)layout.RowStyles.Add(new RowStyle(i==8?SizeType.Percent:i==10?SizeType.Percent:SizeType.AutoSize,i==8?50:i==10?50:0));
         layout.Controls.Add(new Label{Text="&Search meetings:",AutoSize=true},0,0);layout.Controls.Add(search,0,1);
         layout.Controls.Add(new Label{Text="View:",AutoSize=true},0,2);layout.Controls.Add(view,0,3);
         layout.Controls.Add(new Label{Text="Cate&gory filter:",AutoSize=true},0,4);layout.Controls.Add(category,0,5);
-        layout.Controls.Add(list,0,6);layout.Controls.Add(new Label{Text="Meeting &details (your local zone: "+TimeZoneInfo.Local.DisplayName+")",AutoSize=true},0,7);
-        layout.Controls.Add(details,0,8);
-        layout.Controls.Add(Ui.Buttons(Ui.Button("&Open meeting",Open),Ui.Button("&Add meeting",()=>Edit(null))),0,9);
+        layout.Controls.Add(new Label{Text="Zoom account filter:",AutoSize=true},0,6);layout.Controls.Add(account,0,7);
+        layout.Controls.Add(list,0,8);layout.Controls.Add(new Label{Text="Meeting &details (your local zone: "+TimeZoneInfo.Local.DisplayName+")",AutoSize=true},0,9);
+        layout.Controls.Add(details,0,10);
+        layout.Controls.Add(Ui.Buttons(Ui.Button("&Open meeting",Open),Ui.Button("&Add meeting",()=>Edit(null))),0,11);
         Controls.Add(layout);
         var menu=BuildMenus();MainMenuStrip=menu;Controls.Add(menu);
         view.Items.AddRange(["Today's meetings","Upcoming meetings","Favorites","All meetings"]);view.SelectedIndex=0;UpdateCategories();
-        search.TextChanged+=(_,_)=>RefreshRows();view.SelectedIndexChanged+=(_,_)=>RefreshRows();category.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};
+        search.TextChanged+=(_,_)=>RefreshRows();view.SelectedIndexChanged+=(_,_)=>RefreshRows();account.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};category.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};
         list.SelectedIndexChanged+=(_,_)=>ShowDetails();list.DoubleClick+=(_,_)=>Open();
         list.KeyDown+=(_,e)=>{if(e.KeyCode==Keys.Enter){e.SuppressKeyPress=true;Open();}};
         timer.Tick+=(_,_)=>{RefreshRows();CheckReminders();};timer.Start();
@@ -75,6 +77,7 @@ sealed class MainWindow:Form {
         }
         Item(file,"&Paste invitation...",PasteInvitation,Keys.Control|Keys.I);
         Item(file,"&Import shared meetings...",Import);
+        Item(file,"Import &CSV...",ImportCsv);
         Item(file,"&Export selected meetings...",Export);
         file.DropDownItems.Add(new ToolStripSeparator());
         Item(file,"&Back up...",Backup);Item(file,"&Restore backup...",Restore);
@@ -100,29 +103,38 @@ sealed class MainWindow:Form {
         views.DropDownItems.Add(new ToolStripSeparator());
         Item(views,"&Search meetings",()=>search.Focus(),Keys.Control|Keys.F);
         Item(views,"Filter by &category",()=>category.Focus());
+        Item(views,"Filter by Zoom &account",()=>account.Focus());
         Item(views,"&Refresh",()=>RefreshRows(),Keys.F5);
         views.DropDownOpening+=(_,_)=>{for(int i=0;i<viewCommands.Count;i++)viewCommands[i].Checked=view.SelectedIndex==i;};
         Item(help,"&User guide",Help,Keys.F1);
         Item(help,"&Keyboard shortcuts",()=>{using var window=new TextWindow("Keyboard shortcuts",ShortcutText);window.ShowDialog(this);});
         help.DropDownItems.Add(new ToolStripSeparator());
-        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.4\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
+        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.5\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
         bar.Items.AddRange([file,meeting,views,help]);return bar;
     }
-    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Alt+F4: Close window.";
+    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Alt+F4: Close window.";
     Meeting? Selected=>(list.SelectedItem as Row)?.Meeting;
+    IEnumerable<string> Accounts=>meetings.Select(m=>m.ZoomAccount).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
     IEnumerable<string> Categories=>meetings.Select(m=>m.Category).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
     void UpdateCategories() {
         var keep=category.SelectedIndex>=2?category.Text:null;var empty=category.SelectedIndex==1;
         refreshingCategories=true;category.Items.Clear();category.Items.AddRange(["All categories","Uncategorized"]);
         foreach(var c in Categories.Order(StringComparer.CurrentCultureIgnoreCase))category.Items.Add(c);
-        category.SelectedIndex=keep!=null && category.Items.Contains(keep)?category.Items.IndexOf(keep):empty?1:0;refreshingCategories=false;
+        category.SelectedIndex=keep!=null && category.Items.Contains(keep)?category.Items.IndexOf(keep):empty?1:0;
+        var keepAccount=account.SelectedIndex>=2?account.Text:null;var noAccount=account.SelectedIndex==1;
+        account.Items.Clear();account.Items.AddRange(["All Zoom accounts","No Zoom account label"]);
+        foreach(var a in Accounts.Order(StringComparer.CurrentCultureIgnoreCase))account.Items.Add(a);
+        account.SelectedIndex=keepAccount!=null && account.Items.Contains(keepAccount)?account.Items.IndexOf(keepAccount):noAccount?1:0;
+        refreshingCategories=false;
     }
     void RefreshRows(Guid? prefer=null) {
         if(IsDisposed)return;
         var keep=prefer??Selected?.Id;var oldDate=(list.SelectedItem as Row)?.OriginalDate;var now=DateTimeOffset.UtcNow;var query=search.Text.Trim();
-        var filtered=meetings.Where(m=>m.Name.Contains(query,StringComparison.CurrentCultureIgnoreCase)||m.Notes.Contains(query,StringComparison.CurrentCultureIgnoreCase));
+        var filtered=meetings.Where(m=>m.Name.Contains(query,StringComparison.CurrentCultureIgnoreCase)||m.Notes.Contains(query,StringComparison.CurrentCultureIgnoreCase)||m.ZoomAccount.Contains(query,StringComparison.CurrentCultureIgnoreCase));
         if(category.SelectedIndex==1)filtered=filtered.Where(m=>m.Category=="");
         else if(category.SelectedIndex>=2)filtered=filtered.Where(m=>m.Category.Equals(category.Text,StringComparison.CurrentCultureIgnoreCase));
+        if(account.SelectedIndex==1)filtered=filtered.Where(m=>m.ZoomAccount=="");
+        else if(account.SelectedIndex>=2)filtered=filtered.Where(m=>m.ZoomAccount.Equals(account.Text,StringComparison.CurrentCultureIgnoreCase));
         IEnumerable<Row> rows;
         if(view.SelectedIndex==0) {
             var day=DateTime.Today;
@@ -145,20 +157,21 @@ sealed class MainWindow:Form {
         list.EndUpdate();ShowDetails();
     }
     void ShowDetails() {
-        if(list.SelectedItem is not Row r){details.Text="No meetings in this view. Use Add, clear Search or Category, or choose All meetings.";favorite.Text="Mark as &favorite";return;}
+        if(list.SelectedItem is not Row r){details.Text="No meetings in this view. Use Add, clear Search, Category or Zoom account filters, or choose All meetings.";favorite.Text="Mark as &favorite";return;}
         var m=r.Meeting;var zone=TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId);favorite.Text=m.Favorite?"Remove &favorite":"Mark as &favorite";
-        details.Text=$"{m.Name}\r\n{m.Platform}\r\nFavorite: {(m.Favorite?"Yes":"No")}\r\nCategory: {(m.Category==""?"Uncategorized":m.Category)}\r\n{Occurrences.Schedule(m)} at {m.Time:h:mm tt} in {zone.DisplayName}\r\nStarts: {m.Start:D}\r\nEnds: {(m.End is {} end?end.ToString("D"):"No end date")}\r\n"+
+        details.Text=$"{m.Name}\r\n{m.Platform}\r\nZoom account label: {(m.ZoomAccount==""?"None":m.ZoomAccount)}\r\nFavorite: {(m.Favorite?"Yes":"No")}\r\nCategory: {(m.Category==""?"Uncategorized":m.Category)}\r\n"+
+            (m.Pattern==Pattern.Unscheduled?"Saved meeting link; no schedule.\r\n":$"{Occurrences.Schedule(m)} at {m.Time:h:mm tt} in {zone.DisplayName}\r\nStarts: {m.Start:D}\r\nEnds: {(m.End is {} end?end.ToString("D"):"No end date")}\r\n")+
             (r.Next is {} next?$"{(r.Today?"Today's start":"Next start")} in your local time: {next.ToLocalTime():f}\r\nIn meeting time: {TimeZoneInfo.ConvertTime(next,zone):f}\r\n":"No upcoming occurrence. You can still open the link.\r\n")+
             $"Reminder: {(m.ReminderMinutes is {} minutes?minutes==0?"At meeting time":minutes+" minutes before":"Off")}; reminders require this application to stay open.\r\nExceptions: {m.Exceptions.Length}\r\nLink: {m.Link}\r\nMeeting ID: {m.MeetingId}\r\nPasscode: {m.Passcode}\r\nNotes: {m.Notes}";
     }
     void Open() {if(Selected is {} m)try{Ui.Launch(m.Link,m.Platform);}catch(Exception e){Ui.Error(this,e);}}
     void Commit(List<Meeting> next,Guid? select=null,bool reveal=false) {
         store.Save(next);meetings=next;UpdateCategories();
-        if(reveal){search.Clear();category.SelectedIndex=0;view.SelectedIndex=3;}
+        if(reveal){search.Clear();category.SelectedIndex=0;account.SelectedIndex=0;view.SelectedIndex=3;}
         RefreshRows(select);list.Focus();
     }
     void Edit(Meeting? original,bool draft=false) {
-        using var editor=new Editor(original,Categories,draft);
+        using var editor=new Editor(original,Categories,draft,Accounts);
         if(editor.ShowDialog(this)!=DialogResult.OK || editor.Result is not {} result)return;
         try{var next=meetings.Where(m=>m.Id!=result.Id).ToList();next.Add(result);Commit(next,result.Id,true);}
         catch(Exception e){Ui.Error(this,e);}
@@ -195,6 +208,18 @@ sealed class MainWindow:Form {
             using var choose=new SelectionWindow("Review shared meetings to import",imported,null,false);if(choose.ShowDialog(this)!=DialogResult.OK)return;
             var merge=DirectoryFeatures.Merge(meetings,choose.SelectedMeetings);
             Commit(merge.Meetings,null,true);MessageBox.Show(this,$"Added {merge.Added} meetings. Skipped {merge.Skipped} existing meetings. Your existing meetings were kept. Imported reminders are off.","Import complete");
+        }catch(Exception e){Ui.Error(this,e);}
+    }
+    void ImportCsv() {
+        using var file=new OpenFileDialog{Filter="CSV UTF-8 files (*.csv)|*.csv"};if(file.ShowDialog(this)!=DialogResult.OK)return;
+        try {
+            if(new FileInfo(file.FileName).Length>20*1024*1024)throw new ArgumentException("The CSV exceeds 20 MB.");
+            var imported=CsvMeetings.Parse(File.ReadAllText(file.FileName,new System.Text.UTF8Encoding(false,true)));
+            if(imported.Errors.Count>0){using var errors=new TextWindow("CSV import needs corrections","No meetings were imported. Correct these lines, save as CSV UTF-8, and try again.\r\n\r\n"+string.Join("\r\n",imported.Errors));errors.ShowDialog(this);return;}
+            using var choose=new SelectionWindow("Review CSV meetings to import",imported.Meetings,null,false);if(choose.ShowDialog(this)!=DialogResult.OK)return;
+            var merge=DirectoryFeatures.Merge(meetings,choose.SelectedMeetings);
+            if(merge.Added>0)Commit(merge.Meetings,null,true);
+            MessageBox.Show(this,$"Added {merge.Added} meetings. Skipped {merge.Skipped} existing meetings. Your existing meetings were kept.\r\nChoose All meetings and use the Zoom account filter to find saved links. Account labels organize your directory; they do not sign into or switch Zoom accounts.","CSV import complete");
         }catch(Exception e){Ui.Error(this,e);}
     }
     void ProtectLiveData(string path) {

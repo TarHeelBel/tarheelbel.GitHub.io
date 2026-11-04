@@ -58,4 +58,29 @@ PASS Today handles 23-hour local day
 PASS Reject invalid reminder interval
 PASS Reject malformed category
 PASS Shared link may serve distinct meeting names
-61 checks passed.
+PASS Minimal CSV imports an account label
+PASS Saved links have no invented scheduled occurrences
+PASS Saved links produce no reminders
+PASS Unscheduled duplicate ignores unused dates and times
+PASS Identical link remains separate in different accounts
+PASS Account labels compare without case sensitivity
+PASS Account label and saved link survive backup round trip
+PASS Older directories load with no account label
+PASS CSV handles BOM, quoted commas, escaped quotes and multiline notes
+PASS CSV preserves leading zeros
+PASS Bulk CSV imports 49 links across seven accounts
+PASS Reimport skips all 49 existing rooms
+PASS CSV imports weekly schedule and named time zone
+PASS CSV imports first and third Tuesday
+PASS CSV detects Teams platform
+PASS Invalid row reports physical line for an atomic import decision
+PASS Scheduled CSV requires explicit time zone and date/time
+PASS Unscheduled rows reject stray schedule fields
+PASS Malformed CSV quoting is reported
+PASS CSV rejects incorrect field count
+PASS CSV rejects missing and unknown headers
+PASS CSV rejects duplicate normalized headers
+PASS Header-only template is not a completed import
+PASS Saved links require a schedule before enabling reminders
+PASS Malformed account label is rejected
+86 checks passed.
