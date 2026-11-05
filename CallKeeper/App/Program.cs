@@ -46,7 +46,7 @@ sealed class MainWindow:Form {
         this.store=store;this.meetings=meetings;reminderLog=new ReminderLog(Path.Combine(Path.GetDirectoryName(store.PathName)!,"reminders.json"));
         preferencesPath = Path.Combine(Path.GetDirectoryName(store.PathName)!, "startup.json");
         preferences = StartupPreferences.Load(preferencesPath);
-        Text="CallKeeper 0.6.1";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
+        Text="CallKeeper 0.6.2";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
         Size=new Size(1050,870);MinimumSize=new Size(720,650);StartPosition=FormStartPosition.CenterScreen;
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=12,Padding=new Padding(12)};
         for(int i=0;i<12;i++)layout.RowStyles.Add(new RowStyle(i==8?SizeType.Percent:i==10?SizeType.Percent:SizeType.AutoSize,i==8?50:i==10?50:0));
@@ -81,9 +81,9 @@ sealed class MainWindow:Form {
             }
         };
         FormClosed+=(_,_)=>{timer.Dispose();reminders?.Close();};
-        // Set the initial tab stop before the first window activation.
+        // Start at Search, the same control reached by Ctrl+F.
         RefreshRows();
-        ActiveControl = list;
+        ActiveControl = search;
         Shown += (_, _) => CheckReminders();
     }
     MenuStrip BuildMenus() {
@@ -138,7 +138,7 @@ sealed class MainWindow:Form {
         Item(help,"&User guide",Help,Keys.F1);
         Item(help,"&Keyboard shortcuts",()=>{using var window=new TextWindow("Keyboard shortcuts",ShortcutText);window.ShowDialog(this);});
         help.DropDownItems.Add(new ToolStripSeparator());
-        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.6.1\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
+        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.6.2\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
         bar.Items.AddRange([file,meeting,views,help]);return bar;
     }
     const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Ctrl+Shift+C: Copy meeting link when the meeting list has focus. Alt+F4: Close window.";

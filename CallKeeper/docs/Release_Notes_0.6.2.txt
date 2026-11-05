@@ -1,0 +1,11 @@
+CallKeeper 0.6.2
+
+The main window starts in Search meetings. This follows the keyboard path that read the Open meeting button without a repeated title in a JAWS check. Tab from Search to browse the meeting controls. Ctrl+F returns to Search.
+
+- Copy a meeting link or invitation from the Meeting menu. Ctrl+Shift+C copies a link from the meeting list.
+- Choose your startup view and optionally remember the Zoom account filter.
+- Change the account label or category for multiple checked meetings.
+- Review changed links when reimporting CSV files.
+- Give a scheduled occurrence a replacement link through Manage exceptions.
+
+Close older versions before opening CallKeeper.exe from the extracted Windows ZIP. The program reads your existing directory. Version 0.6 is built for Windows x64. The new commands are ready for hands-on screen-reader testing.

@@ -2,9 +2,9 @@
 
 A Windows meeting organizer designed around screen readers and keyboard navigation. Save, find and open Zoom and Microsoft Teams meetings from one directory.
 
-## Download version 0.6.1
+## Download version 0.6.2
 
-[Download CallKeeper 0.6.1 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.6.1/CallKeeper_0.6.1_Windows.zip).
+[Download CallKeeper 0.6.2 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.6.2/CallKeeper_0.6.2_Windows.zip).
 
 GitHub's **Build CallKeeper** workflow also builds a Windows download and publishes it under this repository's Releases after the checks pass.
 
