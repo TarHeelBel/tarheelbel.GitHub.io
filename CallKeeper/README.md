@@ -2,9 +2,9 @@
 
 A Windows meeting organizer designed around screen readers and keyboard navigation. Save, find and open Zoom and Microsoft Teams meetings from one directory.
 
-## Download version 0.6.2
+## Download version 1.0.0
 
-[Download CallKeeper 0.6.2 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v0.6.2/CallKeeper_0.6.2_Windows.zip).
+[Download CallKeeper 1.0.0 for Windows](https://github.com/TarHeelBel/tarheelbel.GitHub.io/releases/download/v1.0.0/CallKeeper_1.0.0_Windows.zip).
 
 GitHub's **Build CallKeeper** workflow also builds a Windows download and publishes it under this repository's Releases after the checks pass.
 
@@ -42,7 +42,7 @@ dotnet run --project CallKeeper/Checks/Checks.csproj -c Release
 dotnet publish CallKeeper/App/App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o release
 ```
 
-Run these commands from the repository root. The build runs automated checks for CSV review, recurring links, reminders, and older data. The organizer tested version 0.5 with JAWS. The new version 0.6 dialogs need hands-on screen-reader testing.
+Run these commands from the repository root. The build runs automated checks for CSV review, recurring links, reminders, and older data. The organizer tested version 0.5 with JAWS. The 1.0 layout and startup announcements need hands-on screen-reader testing.
 
 ## Data and feedback
 
@@ -56,3 +56,5 @@ Independent project; not affiliated with Zoom or Microsoft.
 Version 0.5 adds Ctrl+S in Add/Edit Meeting and File > Import CSV, with Zoom account labels and filtering. See docs/CSV_Import_Guide.txt and templates/CallKeeper_Import_Template.xlsx. Account labels organize your directory; they do not change Zoom sign-in.
 
 Version 0.6 adds clipboard commands, startup settings, bulk label changes, CSV link review, and one-time replacement links.
+
+Version 1.0 groups the main controls by purpose and adds View > Clear all filters (Ctrl+Shift+F).

@@ -1,4 +1,4 @@
-CALLKEEPER 0.6 - RENAMED FROM MEETING DIRECTORY
+CALLKEEPER 1.0 - RENAMED FROM MEETING DIRECTORY
 
 UPGRADE INSTRUCTIONS
 Back up your meetings and close Meeting Directory completely. Extract the CallKeeper release into a new folder and open CallKeeper.exe. Existing meetings and settings load automatically from the same data location. There is no need to import them. Both programs share the same instance lock; opening one while the other is running shows a message instead of opening a second editor.
@@ -122,3 +122,6 @@ Bulk labels. Choose Meeting > Change labels for multiple meetings. Use arrows to
 CSV link changes. Import a CSV and check the rows you want. A changed link with one matching saved entry and one matching checked row (same name, platform and account label) opens a review showing both links. Choose Update link, Keep current link, or Add as separate meeting. Update uses the CSV meeting ID and passcode, including blank fields, and keeps the saved schedule, notes, reminders and favorites. Ambiguous changed rows are listed in the import results and skipped. Cancel import discards all decisions made in that import.
 
 One-time room changes. Select a scheduled meeting and choose Meeting > Manage exceptions. Pick the original scheduled date in the meeting's time zone. Choose Change link only, or Change date or time with an optional replacement link. Paste the direct link for the same meeting platform, choose Add or update exception, then Save exceptions. Open meeting, Copy Link, Copy Invitation, and reminders use that occurrence's replacement link. Today uses the selected occurrence and Upcoming, Favorites and All use the next occurrence when one exists. The regular series link applies on other dates.
+
+CLEAR ALL FILTERS
+Press Ctrl+Shift+F or choose View > Clear all filters to clear Search, Category and Zoom account and show All meetings. Focus moves to the meeting list. When CallKeeper opens, focus starts in Search. Tab moves through the view and filters, meeting list, meeting details, and Open and Add buttons.

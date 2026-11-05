@@ -168,7 +168,7 @@ sealed class ReminderWindow:Form {
 }
 static class HelpText {
     public const string Value="""
-CALLKEEPER 0.6
+CALLKEEPER 1.0
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category, Zoom account filter and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
@@ -218,5 +218,8 @@ Bulk labels. Choose Meeting > Change labels for multiple meetings. Use arrows to
 CSV link changes. Import a CSV and check the rows you want. A changed link with one matching saved entry and one matching checked row (same name, platform and account label) opens a review showing both links. Choose Update link, Keep current link, or Add as separate meeting. Update uses the CSV meeting ID and passcode, including blank fields, and keeps the saved schedule, notes, reminders and favorites. Ambiguous changed rows are listed in the import results and skipped. Cancel import discards all decisions made in that import.
 
 One-time room changes. Select a scheduled meeting and choose Meeting > Manage exceptions. Pick the original scheduled date in the meeting's time zone. Choose Change link only, or Change date or time with an optional replacement link. Paste the direct link for the same meeting platform, choose Add or update exception, then Save exceptions. Open meeting, Copy Link, Copy Invitation, and reminders use that occurrence's replacement link. Today uses the selected occurrence and Upcoming, Favorites and All use the next occurrence when one exists. The regular series link applies on other dates.
+
+CLEAR ALL FILTERS
+Press Ctrl+Shift+F or choose View > Clear all filters to clear Search, Category and Zoom account and show All meetings. Focus moves to the meeting list. When CallKeeper opens, focus starts in Search. Tab moves through the view and filters, meeting list, meeting details, and Open and Add buttons.
 """;
 }

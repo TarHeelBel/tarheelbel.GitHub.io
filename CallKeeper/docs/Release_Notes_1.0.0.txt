@@ -1,0 +1,8 @@
+CallKeeper 1.0
+
+- View > Clear all filters (Ctrl+Shift+F) clears Search, Category, and Zoom account, shows All meetings, and focuses the meeting list.
+- The main window groups filters together and gives the meeting list and details their own labeled sections. The heading uses Windows system colors in high contrast mode.
+- Keyboard shortcuts and native Windows controls support screen reader navigation. Search is the first control on startup.
+- Includes CSV import with link review, copy link and invitation, bulk labels, startup settings, one-time replacement links, and backup and restore.
+
+Close older versions, extract the Windows x64 ZIP into a new folder, and open CallKeeper.exe. The program reads your existing directory. The new layout and startup speech need a hands-on screen reader check. See Read_Me.txt for the keyboard guide.

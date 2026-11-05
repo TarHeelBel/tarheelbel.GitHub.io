@@ -41,28 +41,28 @@ sealed class MainWindow:Form {
     readonly string preferencesPath;
     StartupPreferences preferences;
     ReminderWindow? reminders;
-    bool refreshingCategories;
+    bool updatingFilters;
     public MainWindow(Store store,List<Meeting> meetings) {
         this.store=store;this.meetings=meetings;reminderLog=new ReminderLog(Path.Combine(Path.GetDirectoryName(store.PathName)!,"reminders.json"));
         preferencesPath = Path.Combine(Path.GetDirectoryName(store.PathName)!, "startup.json");
         preferences = StartupPreferences.Load(preferencesPath);
-        Text="CallKeeper 0.6.2";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
-        Size=new Size(1050,870);MinimumSize=new Size(720,650);StartPosition=FormStartPosition.CenterScreen;
-        var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=12,Padding=new Padding(12)};
-        for(int i=0;i<12;i++)layout.RowStyles.Add(new RowStyle(i==8?SizeType.Percent:i==10?SizeType.Percent:SizeType.AutoSize,i==8?50:i==10?50:0));
-        layout.Controls.Add(new Label{Text="&Search meetings:",AutoSize=true},0,0);layout.Controls.Add(search,0,1);
-        layout.Controls.Add(new Label{Text="View:",AutoSize=true},0,2);layout.Controls.Add(view,0,3);
-        layout.Controls.Add(new Label{Text="Cate&gory filter:",AutoSize=true},0,4);layout.Controls.Add(category,0,5);
-        layout.Controls.Add(new Label{Text="Zoom account filter:",AutoSize=true},0,6);layout.Controls.Add(account,0,7);
-        layout.Controls.Add(list,0,8);layout.Controls.Add(new Label{Text="Meeting &details (your local zone: "+TimeZoneInfo.Local.DisplayName+")",AutoSize=true},0,9);
-        layout.Controls.Add(details,0,10);
-        layout.Controls.Add(Ui.Buttons(Ui.Button("&Open meeting",Open),Ui.Button("&Add meeting",()=>Edit(null))),0,11);
-        Controls.Add(layout);
-        var menu=BuildMenus();MainMenuStrip=menu;Controls.Add(menu);
+        Text = "CallKeeper 1.0";
+        Font = new Font("Segoe UI", 12);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Size = new Size(1000, 735);
+        MinimumSize = new Size(660, 530);
+        StartPosition = FormStartPosition.CenterScreen;
+        Controls.Add(BuildLayout());
+        var menu = BuildMenus();
+        MainMenuStrip = menu;
+        Controls.Add(menu);
         view.Items.AddRange(["Today's meetings","Upcoming meetings","Favorites","All meetings"]);view.SelectedIndex = preferences.View;
         UpdateCategories();
         if (preferences.RememberAccount) RestoreAccountFilter(preferences.Account);
-        search.TextChanged+=(_,_)=>RefreshRows();view.SelectedIndexChanged+=(_,_)=>RefreshRows();account.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};category.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};
+        search.TextChanged += FilterChanged;
+        view.SelectedIndexChanged += FilterChanged;
+        account.SelectedIndexChanged += FilterChanged;
+        category.SelectedIndexChanged += FilterChanged;
         list.SelectedIndexChanged+=(_,_)=>ShowDetails();list.DoubleClick+=(_,_)=>Open();
         list.KeyDown += (_, e) => {
             if (e.KeyData == (Keys.Control | Keys.Shift | Keys.C)) {
@@ -86,6 +86,72 @@ sealed class MainWindow:Form {
         ActiveControl = search;
         Shown += (_, _) => CheckReminders();
     }
+    TableLayoutPanel BuildLayout() {
+        var layout = new TableLayoutPanel {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 9, Padding = new Padding(18, 12, 18, 12),
+            BackColor = SystemColors.Control, ForeColor = SystemColors.ControlText, TabStop = false
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (int row = 0; row < layout.RowCount; row++)
+            layout.RowStyles.Add(row switch {
+                5 => new RowStyle(SizeType.Percent, 55),
+                7 => new RowStyle(SizeType.Percent, 45),
+                _ => new RowStyle(SizeType.AutoSize)
+            });
+
+        var heading = new Label {
+            Text = "Meeting directory", Font = new Font("Segoe UI", 17, FontStyle.Bold),
+            Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(3, 0, 3, 8)
+        };
+        void ApplyHeadingColors() {
+            heading.BackColor = SystemInformation.HighContrast ? SystemColors.Control : Color.FromArgb(30, 58, 92);
+            heading.ForeColor = SystemInformation.HighContrast ? SystemColors.ControlText : Color.White;
+        }
+        ApplyHeadingColors();
+        heading.SystemColorsChanged += (_, _) => ApplyHeadingColors();
+
+        var filters = new TableLayoutPanel {
+            Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            RowCount = 2, ColumnCount = 3, Margin = new Padding(0, 3, 0, 3), TabStop = false
+        };
+        for (int i = 0; i < 3; i++) filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 3));
+        filters.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        filters.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        AddFilter(0, "Meeting view", view);
+        AddFilter(1, "Cate&gory filter", category);
+        AddFilter(2, "Zoom account filter", account);
+
+        void AddFilter(int column, string caption, ComboBox control) {
+            filters.Controls.Add(new Label { Text = caption, AutoSize = true, TabIndex = column * 2 }, column, 0);
+            control.TabIndex = column * 2 + 1;
+            filters.Controls.Add(control, column, 1);
+        }
+
+        var open = Ui.Button("&Open meeting", Open);
+        var add = Ui.Button("&Add meeting", () => Edit(null));
+        var buttons = Ui.Buttons(open, add);
+        buttons.TabIndex = 8;
+        buttons.TabStop = false;
+        open.TabIndex = 0;
+        add.TabIndex = 1;
+
+        layout.Controls.Add(heading, 0, 0);
+        layout.Controls.Add(new Label { Text = "&Search meetings", AutoSize = true, TabIndex = 1 }, 0, 1);
+        search.TabIndex = 2;
+        layout.Controls.Add(search, 0, 2);
+        filters.TabIndex = 3;
+        layout.Controls.Add(filters, 0, 3);
+        layout.Controls.Add(new Label { Text = "Meetings", AutoSize = true, TabIndex = 4 }, 0, 4);
+        list.TabIndex = 5;
+        layout.Controls.Add(list, 0, 5);
+        layout.Controls.Add(new Label { Text = "Meeting &details (local time)", AutoSize = true, TabIndex = 6 }, 0, 6);
+        details.TabIndex = 7;
+        layout.Controls.Add(details, 0, 7);
+        layout.Controls.Add(buttons, 0, 8);
+        return layout;
+    }
+
     MenuStrip BuildMenus() {
         var bar=new MenuStrip{AccessibleName="CallKeeper menu bar",Font=Font,Dock=DockStyle.Top,TabStop=false};
         var file=new ToolStripMenuItem("&File");
@@ -132,30 +198,49 @@ sealed class MainWindow:Form {
         Item(views,"&Search meetings",()=>search.Focus(),Keys.Control|Keys.F);
         Item(views,"Filter by &category",()=>category.Focus());
         Item(views,"Filter by Zoom &account",()=>account.Focus());
+        Item(views, "C&lear all filters", () => ClearAllFilters(), Keys.Control | Keys.Shift | Keys.F);
         Item(views,"&Refresh",()=>RefreshRows(),Keys.F5);
         Item(views, "Start&up settings...", EditStartup);
         views.DropDownOpening+=(_,_)=>{for(int i=0;i<viewCommands.Count;i++)viewCommands[i].Checked=view.SelectedIndex==i;};
         Item(help,"&User guide",Help,Keys.F1);
         Item(help,"&Keyboard shortcuts",()=>{using var window=new TextWindow("Keyboard shortcuts",ShortcutText);window.ShowDialog(this);});
         help.DropDownItems.Add(new ToolStripSeparator());
-        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.6.2\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
+        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 1.0\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
         bar.Items.AddRange([file,meeting,views,help]);return bar;
     }
-    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Ctrl+Shift+C: Copy meeting link when the meeting list has focus. Alt+F4: Close window.";
+    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+Shift+F: Clear all filters and show all meetings. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Ctrl+Shift+C: Copy meeting link when the meeting list has focus. Alt+F4: Close window.";
     Meeting? Selected=>(list.SelectedItem as Row)?.Meeting;
     IEnumerable<string> Accounts=>meetings.Select(m=>m.ZoomAccount).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
     IEnumerable<string> Categories=>meetings.Select(m=>m.Category).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
     void UpdateCategories() {
         var keep=category.SelectedIndex>=2?category.Text:null;var empty=category.SelectedIndex==1;
-        refreshingCategories=true;category.Items.Clear();category.Items.AddRange(["All categories","Uncategorized"]);
+        updatingFilters=true;category.Items.Clear();category.Items.AddRange(["All categories","Uncategorized"]);
         foreach(var c in Categories.Order(StringComparer.CurrentCultureIgnoreCase))category.Items.Add(c);
         category.SelectedIndex=keep!=null && category.Items.Contains(keep)?category.Items.IndexOf(keep):empty?1:0;
         var keepAccount=account.SelectedIndex>=2?account.Text:null;var noAccount=account.SelectedIndex==1;
         account.Items.Clear();account.Items.AddRange(["All Zoom accounts","No Zoom account label"]);
         foreach(var a in Accounts.Order(StringComparer.CurrentCultureIgnoreCase))account.Items.Add(a);
         account.SelectedIndex=keepAccount!=null && account.Items.Contains(keepAccount)?account.Items.IndexOf(keepAccount):noAccount?1:0;
-        refreshingCategories=false;
+        updatingFilters=false;
     }
+    void FilterChanged(object? sender, EventArgs e) {
+        if (!updatingFilters) RefreshRows();
+    }
+
+    void ClearAllFilters(Guid? select = null) {
+        updatingFilters = true;
+        try {
+            search.Clear();
+            category.SelectedIndex = 0;
+            account.SelectedIndex = 0;
+            view.SelectedIndex = 3;
+        } finally {
+            updatingFilters = false;
+        }
+        RefreshRows(select);
+        list.Focus();
+    }
+
     void RefreshRows(Guid? prefer=null) {
         if(IsDisposed)return;
         var keep=prefer??Selected?.Id;var oldDate=(list.SelectedItem as Row)?.OriginalDate;var now=DateTimeOffset.UtcNow;var query=search.Text.Trim();
@@ -189,7 +274,7 @@ sealed class MainWindow:Form {
         list.EndUpdate();ShowDetails();
     }
     void ShowDetails() {
-        if(list.SelectedItem is not Row r){details.Text="No meetings in this view. Use Add, clear Search, Category or Zoom account filters, or choose All meetings.";favorite.Text="Mark as &favorite";return;}
+        if(list.SelectedItem is not Row r){details.Text="No meetings in this view. Press Ctrl+Shift+F to clear all filters and show all meetings, or choose Add meeting.";favorite.Text="Mark as &favorite";return;}
         var m=r.Meeting;var zone=TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId);favorite.Text=m.Favorite?"Remove &favorite":"Mark as &favorite";
         var effectiveLink = DirectoryFeatures.LinkFor(m, r.OriginalDate);
         var replacement = effectiveLink != m.Link;
@@ -261,8 +346,11 @@ sealed class MainWindow:Form {
     }
     void Commit(List<Meeting> next,Guid? select=null,bool reveal=false) {
         store.Save(next);meetings=next;UpdateCategories();
-        if(reveal){search.Clear();category.SelectedIndex=0;account.SelectedIndex=0;view.SelectedIndex=3;}
-        RefreshRows(select);list.Focus();
+        if (reveal) ClearAllFilters(select);
+        else {
+            RefreshRows(select);
+            list.Focus();
+        }
     }
     void Edit(Meeting? original,bool draft=false) {
         using var editor=new Editor(original,Categories,draft,Accounts);
