@@ -1,0 +1,11 @@
+CallKeeper 0.6.1
+
+CallKeeper prepares the meeting list and sets initial keyboard focus before the main window opens. This removes the extra focus change after startup and is intended to reduce repeated window-title announcements when tabbing with JAWS.
+
+- Copy a meeting link or invitation from the Meeting menu. Ctrl+Shift+C copies a link from the meeting list.
+- Choose your startup view and optionally remember the Zoom account filter.
+- Change the account label or category for multiple checked meetings.
+- Review changed links when reimporting CSV files.
+- Give a scheduled occurrence a replacement link through Manage exceptions.
+
+Close older versions before opening CallKeeper.exe from the extracted Windows ZIP. The program reads your existing directory. Version 0.6 is built for Windows x64. The new commands are ready for hands-on screen-reader testing.

@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyName>CallKeeper</AssemblyName><Version>0.6.0</Version><FileVersion>0.6.0.0</FileVersion><ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode></PropertyGroup>
+<PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyName>CallKeeper</AssemblyName><Version>0.6.1</Version><FileVersion>0.6.1.0</FileVersion><ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode></PropertyGroup>
 <ItemGroup><ProjectReference Include="../Core/Core.csproj" /></ItemGroup>
 </Project>

@@ -26,22 +26,22 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item CallKeeper/docs/User_Guide.txt release/Read_Me.txt
-          Copy-Item CallKeeper/docs/Release_Notes_0.6.txt release/Release_Notes.txt
+          Copy-Item CallKeeper/docs/Release_Notes_0.6.1.txt release/Release_Notes.txt
           Copy-Item CallKeeper/docs/CSV_Import_Guide.txt release/CSV_Import_Guide.txt
           Copy-Item CallKeeper/templates/CallKeeper_Import_Template.csv release/CallKeeper_Import_Template.csv
           Copy-Item CallKeeper/templates/CallKeeper_Import_Template.xlsx release/CallKeeper_Import_Template.xlsx
-          Compress-Archive -Path release/CallKeeper.exe,release/Read_Me.txt,release/Release_Notes.txt,release/CSV_Import_Guide.txt,release/CallKeeper_Import_Template.csv,release/CallKeeper_Import_Template.xlsx -DestinationPath CallKeeper_0.6_Windows.zip
+          Compress-Archive -Path release/CallKeeper.exe,release/Read_Me.txt,release/Release_Notes.txt,release/CSV_Import_Guide.txt,release/CallKeeper_Import_Template.csv,release/CallKeeper_Import_Template.xlsx -DestinationPath CallKeeper_0.6.1_Windows.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: CallKeeper-0.6-Windows-x64
-          path: CallKeeper_0.6_Windows.zip
-      - name: Publish version 0.6 download if not already released
+          name: CallKeeper-0.6.1-Windows-x64
+          path: CallKeeper_0.6.1_Windows.zip
+      - name: Publish version 0.6.1 download if not already released
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v0.6.0 --repo $env:GITHUB_REPOSITORY *> $null
+          gh release view v0.6.1 --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create v0.6.0 CallKeeper_0.6_Windows.zip CallKeeper/templates/CallKeeper_Import_Template.xlsx CallKeeper/templates/CallKeeper_Import_Template.csv --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "CallKeeper 0.6" --notes-file CallKeeper/docs/Release_Notes_0.6.txt
+            gh release create v0.6.1 CallKeeper_0.6.1_Windows.zip CallKeeper/templates/CallKeeper_Import_Template.xlsx CallKeeper/templates/CallKeeper_Import_Template.csv --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "CallKeeper 0.6.1" --notes-file CallKeeper/docs/Release_Notes_0.6.1.txt
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
