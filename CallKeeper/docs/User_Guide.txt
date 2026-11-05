@@ -1,11 +1,11 @@
-CALLKEEPER 0.5 - RENAMED FROM MEETING DIRECTORY
+CALLKEEPER 0.6 - RENAMED FROM MEETING DIRECTORY
 
 UPGRADE INSTRUCTIONS
 Back up your meetings and close Meeting Directory completely. Extract the CallKeeper release into a new folder and open CallKeeper.exe. Existing meetings and settings load automatically from the same data location. There is no need to import them. Both programs share the same instance lock; opening one while the other is running shows a message instead of opening a second editor.
 
 The saved directory remains %LOCALAPPDATA%\MeetingDirectory so existing data is preserved. Keep using CallKeeper after upgrading.
 
-CALLKEEPER 0.5 - MENU BAR UPDATE
+CALLKEEPER 0.6 - MENU BAR UPDATE
 
 UPDATING
 1. In the current version, back up your directory before upgrading.
@@ -30,7 +30,7 @@ Compiled as a self-contained 64-bit Windows executable. All 61 automated schedul
 QUICK FIRST CHECK
 Open the application, press Alt+F, and listen for the File menu. Arrow through the commands. Press Escape to close it. Your current meeting selection should remain available.
 
-CALLKEEPER 0.5
+CALLKEEPER 0.6
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
@@ -67,7 +67,7 @@ SUPPORTED LINKS
 Use complete direct HTTPS Zoom links under zoom.us, zoom.com or zoomgov.com, or Teams links at teams.microsoft.com, teams.live.com or teams.cloud.microsoft. Your configured meeting application or browser opens them. The meeting host may require sign-in. Meeting ID and passcode fields are reference information; they do not modify the link.
 
 
-CALLKEEPER 0.5: IMPORTING YOUR ZOOM LINKS
+CALLKEEPER 0.6: IMPORTING YOUR ZOOM LINKS
 
 Quick start
 1. Open CallKeeper_Import_Template.xlsx in Excel.
@@ -107,6 +107,18 @@ Leave date, time, weekday, monthly and end-date fields blank for unscheduled lin
 
 Review and error handling
 Nothing is saved until you choose Import checked. If any CSV line is invalid, no meetings are imported; a readable, selectable error window lists the line numbers. Correct the spreadsheet, export CSV UTF-8 again, and retry. Blank rows are ignored. The import accepts up to 10,000 rows and a 20 MB file, and your combined directory cannot exceed 10,000 meetings.
-Existing meetings are kept. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
+Changed links can be reviewed before saving. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
 
 Your workbook and CSV may contain private meeting links and passcodes. Store and share them accordingly. Existing saved directories and backups still load; older entries have no Zoom account label until you add one.
+
+VERSION 0.6 ORGANIZER COMMANDS
+
+Copy links and invitations. Select a meeting, then choose Meeting > Copy link or Copy invitation. With focus on the meeting list, Ctrl+Shift+C copies the link. Press Enter to dismiss the clipboard confirmation. An invitation includes the name, link, scheduled time when available, and saved meeting ID and passcode when they apply. Paste the copied text into a message when ready.
+
+Startup settings. Choose View > Startup settings. Select the view to open on the next launch. Check Remember the last Zoom account filter to restore the filter that was selected when you closed CallKeeper. If a remembered label no longer exists, the program opens with all account labels visible in the selected view. These preferences are stored on this computer separately from meeting backups.
+
+Bulk labels. Choose Meeting > Change labels for multiple meetings. Use arrows to browse and Space to check meetings. Choose Continue, check the fields to change, and enter or pick the labels. A checked field left blank clears that label. Account changes apply to Zoom entries. Category changes can apply to both Zoom and Teams.
+
+CSV link changes. Import a CSV and check the rows you want. A changed link with one matching saved entry and one matching checked row (same name, platform and account label) opens a review showing both links. Choose Update link, Keep current link, or Add as separate meeting. Update uses the CSV meeting ID and passcode, including blank fields, and keeps the saved schedule, notes, reminders and favorites. Ambiguous changed rows are listed in the import results and skipped. Cancel import discards all decisions made in that import.
+
+One-time room changes. Select a scheduled meeting and choose Meeting > Manage exceptions. Pick the original scheduled date in the meeting's time zone. Choose Change link only, or Change date or time with an optional replacement link. Paste the direct link for the same meeting platform, choose Add or update exception, then Save exceptions. Open meeting, Copy Link, Copy Invitation, and reminders use that occurrence's replacement link. Today uses the selected occurrence and Upcoming, Favorites and All use the next occurrence when one exists. The regular series link applies on other dates.

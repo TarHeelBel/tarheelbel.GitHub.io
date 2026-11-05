@@ -49,18 +49,18 @@ sealed class SelectionWindow:Form {
     readonly TextBox details=Ui.Named(new TextBox{Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Vertical,Dock=DockStyle.Fill},"Highlighted meeting details");
     readonly CheckBox privateFields=Ui.Named(new CheckBox{Text="Include notes and separate passcode fields",AutoSize=true},"Include notes and separate passcode fields; meeting links themselves can still contain passcodes");
     readonly List<Meeting> meetings;
-    public SelectionWindow(string title,IEnumerable<Meeting> meetings,Guid? selected,bool exporting) {
+    public SelectionWindow(string title,IEnumerable<Meeting> meetings,Guid? selected,bool exporting,bool bulkEdit=false,bool reviewLinks=false) {
         this.meetings=meetings.OrderBy(m=>m.Name,StringComparer.CurrentCultureIgnoreCase).ToList();
         Text=title;Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;Size=new Size(900,730);MinimumSize=new Size(650,500);StartPosition=FormStartPosition.CenterParent;
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=6,Padding=new Padding(12)};
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));layout.RowStyles.Add(new RowStyle(SizeType.Percent,55));layout.RowStyles.Add(new RowStyle(SizeType.Percent,45));layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(new Label{Text=exporting?"Check meetings to export. Links may contain passcodes even when separate private fields are excluded.":"Review and check meetings to add. Existing meetings are kept; duplicates are skipped. Imported reminders stay off.",AutoSize=true},0,0);
+        layout.Controls.Add(new Label{Text=bulkEdit?"Check the meetings whose labels you want to change. Use Space to toggle each meeting.":exporting?"Check meetings to export. Links may contain passcodes even when separate private fields are excluded.":reviewLinks?"Check the rows to import. You can review any changed meeting links before saving.":"Review and check meetings to add. Existing meetings are kept; duplicates are skipped. Imported reminders stay off.",AutoSize=true},0,0);
         layout.Controls.Add(list,0,1);layout.Controls.Add(details,0,2);
         layout.Controls.Add(Ui.Buttons(Ui.Button("Select &all",()=>CheckAll(true)),Ui.Button("Select &none",()=>CheckAll(false))),0,3);
         if(exporting)layout.Controls.Add(privateFields,0,4);
-        var okay=Ui.Button(exporting?"&Export checked":"&Import checked",()=>{SelectedMeetings=list.CheckedIndices.Cast<int>().Select(i=>this.meetings[i]).ToList();if(SelectedMeetings.Count==0){MessageBox.Show(this,"Check at least one meeting.","Select meetings");return;}DialogResult=DialogResult.OK;Close();});
+        var okay=Ui.Button(bulkEdit?"&Continue":exporting?"&Export checked":"&Import checked",()=>{SelectedMeetings=list.CheckedIndices.Cast<int>().Select(i=>this.meetings[i]).ToList();if(SelectedMeetings.Count==0){MessageBox.Show(this,"Check at least one meeting.","Select meetings");return;}DialogResult=DialogResult.OK;Close();});
         var cancel=Ui.Button("Cancel",Close);CancelButton=cancel;layout.Controls.Add(Ui.Buttons(okay,cancel),0,5);Controls.Add(layout);
-        for(int i=0;i<this.meetings.Count;i++)list.Items.Add(this.meetings[i].Name+"; "+this.meetings[i].Platform+(this.meetings[i].ZoomAccount!=""?"; Zoom account: "+this.meetings[i].ZoomAccount:"")+"; "+Occurrences.Schedule(this.meetings[i]),exporting?this.meetings[i].Id==selected:true);
+        for(int i=0;i<this.meetings.Count;i++)list.Items.Add(this.meetings[i].Name+"; "+this.meetings[i].Platform+(this.meetings[i].ZoomAccount!=""?"; Zoom account: "+this.meetings[i].ZoomAccount:"")+"; "+Occurrences.Schedule(this.meetings[i]),exporting || bulkEdit ? this.meetings[i].Id==selected : true);
         list.SelectedIndexChanged+=(_,_)=>{if(list.SelectedIndex<0)return;var m=this.meetings[list.SelectedIndex];details.Text=$"{m.Name}\r\n{m.Platform}\r\n{m.Link}\r\n{Occurrences.Schedule(m)}{(m.Pattern==Pattern.Unscheduled?"":$" at {m.Time:h:mm tt}\r\nTime zone: {TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId).DisplayName}")}\r\nZoom account label: {m.ZoomAccount}\r\nCategory: {m.Category}\r\nExceptions: {m.Exceptions.Length}\r\nNotes: {m.Notes}";};
         Shown+=(_,_)=>{if(list.Items.Count>0)list.SelectedIndex=0;list.Focus();};
     }
@@ -75,39 +75,58 @@ sealed class ExceptionsWindow:Form {
     readonly ComboBox action=Ui.Named(new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill},"Exception action");
     readonly DateTimePicker newDate=Ui.Named(new DateTimePicker{Format=DateTimePickerFormat.Long,Dock=DockStyle.Fill},"New date in meeting time zone");
     readonly DateTimePicker newTime=Ui.Named(new DateTimePicker{Format=DateTimePickerFormat.Custom,CustomFormat="h:mm tt",ShowUpDown=true,Dock=DockStyle.Fill},"New time in meeting time zone");
+    readonly TextBox link = Ui.Named(new TextBox { Dock = DockStyle.Fill }, "Replacement link for this occurrence");
     bool saved;
     bool dirty;
     string pending="";
-    string Inputs()=>date.Value.Date.ToString("O")+"/"+action.SelectedIndex+"/"+newDate.Value.Date.ToString("O")+"/"+newTime.Value.TimeOfDay;
+    string Inputs()=>date.Value.Date.ToString("O")+"/"+action.SelectedIndex+"/"+newDate.Value.Date.ToString("O")+"/"+newTime.Value.TimeOfDay+"/"+link.Text;
     public ExceptionsWindow(Meeting meeting,DateOnly? selected) {
         this.meeting=meeting;exceptions=meeting.Exceptions.ToList();
         Text="Exceptions for "+meeting.Name;Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;Size=new Size(880,800);MinimumSize=new Size(680,650);StartPosition=FormStartPosition.CenterParent;
-        var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=12,Padding=new Padding(12)};
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));for(int i=2;i<12;i++)root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=14,Padding=new Padding(12)};
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));for(int i=2;i<14;i++)root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.Controls.Add(new Label{Text="Changes affect this directory only. Use dates and times in "+TimeZoneInfo.FindSystemTimeZoneById(meeting.ZoneId).DisplayName+". Add or update an exception, then Save exceptions.",AutoSize=true},0,0);root.Controls.Add(list,0,1);
         root.Controls.Add(new Label{Text="Original scheduled &date:",AutoSize=true},0,2);root.Controls.Add(date,0,3);
         root.Controls.Add(action,0,4);root.Controls.Add(new Label{Text="New date (when changing the time):",AutoSize=true},0,5);root.Controls.Add(newDate,0,6);root.Controls.Add(new Label{Text="New time:",AutoSize=true},0,7);root.Controls.Add(newTime,0,8);
-        root.Controls.Add(Ui.Buttons(Ui.Button("&Add or update exception",Add),Ui.Button("&Remove highlighted exception",Remove)),0,9);
-        root.Controls.Add(new Label{Text="Removing an exception restores the normal occurrence. A moved occurrence can be on another date.",AutoSize=true},0,10);
+        root.Controls.Add(new Label { Text = "Replacement &link for this occurrence", AutoSize = true }, 0, 9);
+        root.Controls.Add(link, 0, 10);
+        root.Controls.Add(Ui.Buttons(Ui.Button("&Add or update exception",Add),Ui.Button("&Remove highlighted exception",Remove)),0,11);
+        root.Controls.Add(new Label{Text="Removing an exception restores the normal occurrence. A moved occurrence can be on another date.",AutoSize=true},0,12);
         var save=Ui.Button("&Save exceptions",()=>{try{if(pending!="" && pending!=Inputs()){MessageBox.Show(this,"Choose Add or update exception before saving these date and time changes.","Apply exception first");return;}(meeting with{Exceptions=exceptions.ToArray()}).Validate();Result=exceptions.ToArray();saved=true;DialogResult=DialogResult.OK;Close();}catch(Exception e){Ui.Error(this,e);}});
-        var cancel=Ui.Button("Cancel",Close);CancelButton=cancel;root.Controls.Add(Ui.Buttons(save,cancel),0,11);Controls.Add(root);
-        action.Items.AddRange(["Skip this occurrence","Change this occurrence's date or time"]);action.SelectedIndex=0;action.SelectedIndexChanged+=(_,_)=>{newDate.Enabled=newTime.Enabled=action.SelectedIndex==1;};newDate.Enabled=newTime.Enabled=false;
+        var cancel=Ui.Button("Cancel",Close);CancelButton=cancel;root.Controls.Add(Ui.Buttons(save,cancel),0,13);Controls.Add(root);
+        action.Items.AddRange(["Skip this occurrence", "Change date or time, with optional replacement link", "Change link only"]);
+        action.SelectedIndex = 0;
+        action.SelectedIndexChanged += (_, _) => {
+            newDate.Enabled = newTime.Enabled = action.SelectedIndex == 1;
+            link.Enabled = action.SelectedIndex != 0;
+        };
+        newDate.Enabled = newTime.Enabled = link.Enabled = false;
         var zone=TimeZoneInfo.FindSystemTimeZoneById(meeting.ZoneId);var today=DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.Now,zone).DateTime);
         date.Value=(selected??(today<meeting.Start?meeting.Start:today)).ToDateTime(TimeOnly.MinValue);newDate.Value=date.Value;newTime.Value=DateTime.Today.Add(meeting.Time.ToTimeSpan());
-        list.SelectedIndexChanged+=(_,_)=>{if(list.SelectedIndex<0)return;var e=exceptions[list.SelectedIndex];date.Value=e.OriginalDate.ToDateTime(TimeOnly.MinValue);action.SelectedIndex=e.Skip?0:1;if(e.NewLocalStart is {} dt){newDate.Value=dt.Date;newTime.Value=dt;}pending=Inputs();};
+        list.SelectedIndexChanged+=(_,_)=>{if(list.SelectedIndex<0)return;var e=exceptions[list.SelectedIndex];date.Value=e.OriginalDate.ToDateTime(TimeOnly.MinValue);action.SelectedIndex=e.Skip?0:e.NewLocalStart.HasValue?1:2;link.Text=e.LinkOverride??"";if(e.NewLocalStart is {} dt){newDate.Value=dt.Date;newTime.Value=dt;}pending=Inputs();};
         RefreshList();Shown+=(_,_)=>{pending=Inputs();date.Focus();};
         FormClosing+=(_,e)=>{if(!saved && (dirty || (pending!="" && pending!=Inputs())) && MessageBox.Show(this,"Discard your exception changes?","Unsaved exceptions",MessageBoxButtons.YesNo,MessageBoxIcon.Question,MessageBoxDefaultButton.Button2)!=DialogResult.Yes)e.Cancel=true;};
     }
     void Add() {
         try {
             var d=DateOnly.FromDateTime(date.Value);
-            var item=new MeetingException{OriginalDate=d,Skip=action.SelectedIndex==0,NewLocalStart=action.SelectedIndex==0?null:DateTime.SpecifyKind(newDate.Value.Date+newTime.Value.TimeOfDay,DateTimeKind.Unspecified)};
+            var replacement = link.Text.Trim();
+            if (action.SelectedIndex == 2 && replacement.Length == 0)
+                throw new ArgumentException("Enter a replacement meeting link.");
+            var item = new MeetingException {
+                OriginalDate = d,
+                Skip = action.SelectedIndex == 0,
+                NewLocalStart = action.SelectedIndex == 1
+                    ? DateTime.SpecifyKind(newDate.Value.Date + newTime.Value.TimeOfDay, DateTimeKind.Unspecified)
+                    : null,
+                LinkOverride = action.SelectedIndex != 0 && replacement.Length > 0 ? replacement : null
+            };
             var next=exceptions.Where(x=>x.OriginalDate!=d).Append(item).OrderBy(x=>x.OriginalDate).ToArray();
             (meeting with{Exceptions=next}).Validate();exceptions.Clear();exceptions.AddRange(next);dirty=true;RefreshList();list.SelectedIndex=exceptions.FindIndex(e=>e.OriginalDate==d);pending=Inputs();list.Focus();
         }catch(Exception e){Ui.Error(this,e);}
     }
     void Remove(){if(list.SelectedIndex<0)return;exceptions.RemoveAt(list.SelectedIndex);dirty=true;RefreshList();pending=Inputs();list.Focus();}
-    void RefreshList(){list.Items.Clear();foreach(var e in exceptions)list.Items.Add($"{e.OriginalDate:D}: "+(e.Skip?"Skipped":$"Moved to {e.NewLocalStart:f}"));}
+    void RefreshList(){list.Items.Clear();foreach(var e in exceptions)list.Items.Add($"{e.OriginalDate:D}: "+(e.Skip?"Skipped":(e.NewLocalStart is {} moved ? $"Moved to {moved:f}" : "Regular start time") + (e.LinkOverride is null ? "" : "; replacement link")));}
 }
 sealed class ReminderLog {
     readonly string path;
@@ -126,7 +145,10 @@ sealed class ReminderWindow:Form {
     readonly ListBox list=Ui.Named(new ListBox{Dock=DockStyle.Fill,HorizontalScrollbar=true},"Meeting reminders; select one then Open meeting");
     readonly TextBox details=Ui.Named(new TextBox{ReadOnly=true,Multiline=true,Dock=DockStyle.Fill},"Reminder details");
     readonly List<ReminderItem> items=[];
-    public ReminderWindow() {
+    readonly Action<ReminderItem> openMeeting;
+
+    public ReminderWindow(Action<ReminderItem> openMeeting) {
+        this.openMeeting = openMeeting;
         Text="Meeting reminders";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;Size=new Size(800,480);StartPosition=FormStartPosition.CenterScreen;
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=4,Padding=new Padding(12)};
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));layout.RowStyles.Add(new RowStyle(SizeType.Percent,60));layout.RowStyles.Add(new RowStyle(SizeType.Percent,40));layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -142,11 +164,11 @@ sealed class ReminderWindow:Form {
         if(WindowState==FormWindowState.Minimized)WindowState=FormWindowState.Normal;
         Activate();list.Focus();
     }
-    void Open(){if(list.SelectedIndex<0)return;var r=items[list.SelectedIndex];try{Ui.Launch(r.Link,r.Platform);}catch(Exception e){Ui.Error(this,e);}}
+    void Open(){if(list.SelectedIndex<0)return;var r=items[list.SelectedIndex];try{openMeeting(r);}catch(Exception e){Ui.Error(this,e);}}
 }
 static class HelpText {
     public const string Value="""
-CALLKEEPER 0.5
+CALLKEEPER 0.6
 
 MENU BAR
 Press Alt or F10 for the menu bar. Alt+F opens File; Alt+M Meeting; Alt+V View; Alt+H Help. Use arrows to browse and Enter to activate. Escape closes a menu. File contains invitations, imports, exports, backup, restore and Exit. Meeting contains Add, Edit, Open, Favorite, Exceptions and Delete. View contains Today, Upcoming, Favorites, All, Search, Category, Zoom account filter and Refresh. Help contains the User guide, Keyboard shortcuts and About. Commands needing a selected meeting are disabled when none is selected. The current view and favorite state are checked in their menus.
@@ -183,7 +205,18 @@ SUPPORTED LINKS
 Use complete direct HTTPS Zoom links under zoom.us, zoom.com or zoomgov.com, or Teams links at teams.microsoft.com, teams.live.com or teams.cloud.microsoft. Your configured meeting application or browser opens them. The meeting host may require sign-in. Meeting ID and passcode fields are reference information; they do not modify the link.
 
 CSV IMPORT AND ACCOUNT LABELS
-File > Import CSV accepts the supplied CSV UTF-8 template. Enter MeetingName, MeetingLink and a ZoomAccount label. Leave Schedule and date/time fields blank for reusable links. Review the checked list before importing. Errors show line numbers and save nothing. Use Ctrl+4 for All meetings and the Zoom account filter to browse your accounts. Labels organize links and do not change your Zoom sign-in. Existing meetings are kept and duplicates are skipped. Imported reminders are off.
+File > Import CSV accepts the supplied CSV UTF-8 template. Enter MeetingName, MeetingLink and a ZoomAccount label. Leave Schedule and date/time fields blank for reusable links. Review the checked list before importing. Errors show line numbers and save nothing. Use Ctrl+4 for All meetings and the Zoom account filter to browse your accounts. Labels organize links and do not change your Zoom sign-in. Duplicates are skipped. Changed links are reviewed before saving. Reminders for newly added entries are off.
 Ctrl+S saves in both Add Meeting and Edit Meeting. The supplied CSV_Import_Guide.txt explains all optional schedule columns.
+VERSION 0.6 ORGANIZER COMMANDS
+
+Copy links and invitations. Select a meeting, then choose Meeting > Copy link or Copy invitation. With focus on the meeting list, Ctrl+Shift+C copies the link. Press Enter to dismiss the clipboard confirmation. An invitation includes the name, link, scheduled time when available, and saved meeting ID and passcode when they apply. Paste the copied text into a message when ready.
+
+Startup settings. Choose View > Startup settings. Select the view to open on the next launch. Check Remember the last Zoom account filter to restore the filter that was selected when you closed CallKeeper. If a remembered label no longer exists, the program opens with all account labels visible in the selected view. These preferences are stored on this computer separately from meeting backups.
+
+Bulk labels. Choose Meeting > Change labels for multiple meetings. Use arrows to browse and Space to check meetings. Choose Continue, check the fields to change, and enter or pick the labels. A checked field left blank clears that label. Account changes apply to Zoom entries. Category changes can apply to both Zoom and Teams.
+
+CSV link changes. Import a CSV and check the rows you want. A changed link with one matching saved entry and one matching checked row (same name, platform and account label) opens a review showing both links. Choose Update link, Keep current link, or Add as separate meeting. Update uses the CSV meeting ID and passcode, including blank fields, and keeps the saved schedule, notes, reminders and favorites. Ambiguous changed rows are listed in the import results and skipped. Cancel import discards all decisions made in that import.
+
+One-time room changes. Select a scheduled meeting and choose Meeting > Manage exceptions. Pick the original scheduled date in the meeting's time zone. Choose Change link only, or Change date or time with an optional replacement link. Paste the direct link for the same meeting platform, choose Add or update exception, then Save exceptions. Open meeting, Copy Link, Copy Invitation, and reminders use that occurrence's replacement link. Today uses the selected occurrence and Upcoming, Favorites and All use the next occurrence when one exists. The regular series link applies on other dates.
 """;
 }

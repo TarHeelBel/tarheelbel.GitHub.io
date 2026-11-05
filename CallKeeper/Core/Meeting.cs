@@ -47,7 +47,13 @@ public sealed record Meeting {
             throw new ArgumentException("That time does not exist because clocks move forward. Choose another time.");
         foreach(var e in Exceptions) {
             if(!Occurrences.Matches(this,e.OriginalDate))throw new ArgumentException("An exception no longer matches this meeting schedule. Remove it or keep the original schedule.");
-            if(!e.Skip && (e.NewLocalStart is not {} local || Occurrences.ToInstant(local,zone) is null))throw new ArgumentException("A changed occurrence needs a valid date and time in the meeting time zone.");
+            if (e.LinkOverride is {} link) ValidateLink(link, Platform);
+            if (e.Skip) continue;
+            if (e.NewLocalStart is null && e.LinkOverride is null)
+                throw new ArgumentException("Choose a new date, time or link for this occurrence.");
+            var local = e.NewLocalStart ?? e.OriginalDate.ToDateTime(Time);
+            if (Occurrences.ToInstant(local, zone) is null)
+                throw new ArgumentException("A changed occurrence needs a valid date and time in the meeting time zone.");
         }
     }
         
@@ -96,15 +102,19 @@ public static class Occurrences {
             if(day==DateOnly.MaxValue)break;
         }
         // An exception can move an occurrence from any date into this range.
-        foreach(var e in m.Exceptions) if(!e.Skip && e.NewLocalStart is {} local && Matches(m,e.OriginalDate) && ToInstant(local,zone) is {} t && t>=from && t<until)result.Add(new(e.OriginalDate,t));
+        foreach(var e in m.Exceptions) if(!e.Skip && Matches(m,e.OriginalDate) && ToInstant(e.NewLocalStart ?? e.OriginalDate.ToDateTime(m.Time),zone) is {} t && t>=from && t<until)result.Add(new(e.OriginalDate,t));
         return result.OrderBy(x=>x.At).ThenBy(x=>x.OriginalDate).ToArray();
     }
-    public static DateTimeOffset? Next(Meeting m,DateTimeOffset now) {
+    public static DateTimeOffset? Next(Meeting m, DateTimeOffset now) => NextOccurrence(m, now)?.At;
+
+    public static Occurrence? NextOccurrence(Meeting m, DateTimeOffset now) {
         if(m.Pattern==Pattern.Unscheduled)return null;
         var zone=TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId);
-        DateTimeOffset? best=null;
+        Occurrence? best=null;
         foreach(var e in m.Exceptions) {
-            if(!e.Skip && e.NewLocalStart is {} local && Matches(m,e.OriginalDate) && ToInstant(local,zone) is {} instant && instant>=now && (best==null || instant<best))best=instant;
+            if (!e.Skip && Matches(m,e.OriginalDate) &&
+                ToInstant(e.NewLocalStart ?? e.OriginalDate.ToDateTime(m.Time), zone) is {} instant && instant >= now)
+                Consider(e.OriginalDate, instant);
         }
         var overridden=m.Exceptions.Select(e=>e.OriginalDate).ToHashSet();
         var day=DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now,zone).DateTime);
@@ -114,13 +124,18 @@ public static class Occurrences {
             if(m.End is {} end && day>end)break;
             if(m.Pattern==Pattern.Once && day>m.Start)break;
             if(!overridden.Contains(day) && Matches(m,day) && ToInstant(day.ToDateTime(m.Time),zone) is {} t && t>=now) {
-                if(best==null || t<best)best=t;
+                Consider(day, t);
                 break;
             }
             if(day==DateOnly.MaxValue)break;
             day=day.AddDays(1);
         }
         return best;
+
+        void Consider(DateOnly date, DateTimeOffset at) {
+            if (best is null || at < best.At || (at == best.At && date < best.OriginalDate))
+                best = new Occurrence(date, at);
+        }
     }
     public static string Schedule(Meeting m)=>m.Pattern switch {
         Pattern.Unscheduled=>"No schedule (saved meeting link)",

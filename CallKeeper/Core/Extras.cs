@@ -5,6 +5,7 @@ namespace MeetingDirectory;
 public sealed record MeetingException {
     public DateOnly OriginalDate {get;init;}
     public bool Skip {get;init;} = true;
+    public string? LinkOverride {get;init;}
     // Rescheduled date/time remains in the meeting's stored time zone.
     public DateTime? NewLocalStart {get;init;}
 }
@@ -13,13 +14,31 @@ public sealed record ReminderItem(Guid MeetingId,string Name,string Platform,str
     public string Key=>$"{MeetingId:N}/{Occurrence.OriginalDate:yyyy-MM-dd}/{Occurrence.At.UtcTicks}/{Minutes}";
 }
 public static class DirectoryFeatures {
+    public static string LinkFor(Meeting meeting, DateOnly? occurrenceDate) =>
+        meeting.Exceptions.FirstOrDefault(e => !e.Skip && e.OriginalDate == occurrenceDate)?.LinkOverride ?? meeting.Link;
+
+    public static string InvitationFor(Meeting meeting, Occurrence? occurrence) {
+        var link = LinkFor(meeting, occurrence?.OriginalDate);
+        var lines = new List<string> { meeting.Name, "Join " + meeting.Platform + ": " + link };
+        if (occurrence is not null) {
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(meeting.ZoneId);
+            var local = TimeZoneInfo.ConvertTime(occurrence.At, zone);
+            lines.Add($"When: {local:f} (UTC{local:zzz}, {zone.Id})");
+        }
+        if (link == meeting.Link) {
+            if (meeting.MeetingId.Length > 0) lines.Add("Meeting ID: " + meeting.MeetingId);
+            if (meeting.Passcode.Length > 0) lines.Add("Passcode: " + meeting.Passcode);
+        }
+        return string.Join(Environment.NewLine, lines);
+    }
+
     public static IReadOnlyList<ReminderItem> Due(IEnumerable<Meeting> meetings,DateTimeOffset now,ISet<string> delivered) {
         var result=new List<ReminderItem>();
         foreach(var m in meetings.Where(m=>m.ReminderMinutes.HasValue)) {
             var minutes=m.ReminderMinutes!.Value;
             foreach(var occurrence in Occurrences.Between(m,now.AddSeconds(-30),now.AddMinutes(minutes).AddSeconds(1))) {
                 var due=occurrence.At.AddMinutes(-minutes);
-                var item=new ReminderItem(m.Id,m.Name,m.Platform,m.Link,occurrence,minutes);
+                var item=new ReminderItem(m.Id,m.Name,m.Platform,LinkFor(m, occurrence.OriginalDate),occurrence,minutes);
                 // Catch a reminder on startup/resume if its meeting has not started.
                 if(due<=now && occurrence.At>=now.AddSeconds(-30) && !delivered.Contains(item.Key))result.Add(item);
             }

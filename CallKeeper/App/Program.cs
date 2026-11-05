@@ -38,11 +38,15 @@ sealed class MainWindow:Form {
     readonly List<ToolStripMenuItem> viewCommands=[];
     readonly System.Windows.Forms.Timer timer=new(){Interval=15000};
     readonly ReminderLog reminderLog;
+    readonly string preferencesPath;
+    StartupPreferences preferences;
     ReminderWindow? reminders;
     bool refreshingCategories;
     public MainWindow(Store store,List<Meeting> meetings) {
         this.store=store;this.meetings=meetings;reminderLog=new ReminderLog(Path.Combine(Path.GetDirectoryName(store.PathName)!,"reminders.json"));
-        Text="CallKeeper 0.5";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
+        preferencesPath = Path.Combine(Path.GetDirectoryName(store.PathName)!, "startup.json");
+        preferences = StartupPreferences.Load(preferencesPath);
+        Text="CallKeeper 0.6";Font=new Font("Segoe UI",12);AutoScaleMode=AutoScaleMode.Dpi;
         Size=new Size(1050,870);MinimumSize=new Size(720,650);StartPosition=FormStartPosition.CenterScreen;
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=12,Padding=new Padding(12)};
         for(int i=0;i<12;i++)layout.RowStyles.Add(new RowStyle(i==8?SizeType.Percent:i==10?SizeType.Percent:SizeType.AutoSize,i==8?50:i==10?50:0));
@@ -55,11 +59,27 @@ sealed class MainWindow:Form {
         layout.Controls.Add(Ui.Buttons(Ui.Button("&Open meeting",Open),Ui.Button("&Add meeting",()=>Edit(null))),0,11);
         Controls.Add(layout);
         var menu=BuildMenus();MainMenuStrip=menu;Controls.Add(menu);
-        view.Items.AddRange(["Today's meetings","Upcoming meetings","Favorites","All meetings"]);view.SelectedIndex=0;UpdateCategories();
+        view.Items.AddRange(["Today's meetings","Upcoming meetings","Favorites","All meetings"]);view.SelectedIndex = preferences.View;
+        UpdateCategories();
+        if (preferences.RememberAccount) RestoreAccountFilter(preferences.Account);
         search.TextChanged+=(_,_)=>RefreshRows();view.SelectedIndexChanged+=(_,_)=>RefreshRows();account.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};category.SelectedIndexChanged+=(_,_)=>{if(!refreshingCategories)RefreshRows();};
         list.SelectedIndexChanged+=(_,_)=>ShowDetails();list.DoubleClick+=(_,_)=>Open();
-        list.KeyDown+=(_,e)=>{if(e.KeyCode==Keys.Enter){e.SuppressKeyPress=true;Open();}};
+        list.KeyDown += (_, e) => {
+            if (e.KeyData == (Keys.Control | Keys.Shift | Keys.C)) {
+                e.SuppressKeyPress = true;
+                CopyMeeting(false);
+            } else if (e.KeyData == Keys.Enter) {
+                e.SuppressKeyPress = true;
+                Open();
+            }
+        };
         timer.Tick+=(_,_)=>{RefreshRows();CheckReminders();};timer.Start();
+        FormClosing += (_, _) => {
+            if (preferences.RememberAccount) {
+                try { SavePreferences(preferences); }
+                catch (Exception e) { Ui.Error(this, e); }
+            }
+        };
         FormClosed+=(_,_)=>{timer.Dispose();reminders?.Close();};
         Shown+=(_,_)=>{RefreshRows();list.Focus();CheckReminders();};
     }
@@ -85,12 +105,17 @@ sealed class MainWindow:Form {
         Item(meeting,"&Add meeting...",()=>Edit(null),Keys.Control|Keys.N);
         Item(meeting,"&Edit meeting...",()=>{if(Selected is {} m)Edit(m);},Keys.Control|Keys.E,true);
         Item(meeting,"&Open meeting",Open,needsSelection:true);
+        Item(meeting, "Copy &link", () => CopyMeeting(false), needsSelection: true);
+        Item(meeting, "Copy &invitation", () => CopyMeeting(true), needsSelection: true);
+        var bulkLabels = Item(meeting, "Change labels for &multiple meetings...", BulkLabels);
         meeting.DropDownItems.Add(new ToolStripSeparator());
         favorite.Click+=(_,_)=>ToggleFavorite();meeting.DropDownItems.Add(favorite);selectionCommands.Add(favorite);
-        Item(meeting,"Manage e&xceptions...",Exceptions,needsSelection:true);
+        var exceptions = Item(meeting,"Manage e&xceptions...",Exceptions,needsSelection:true);
         meeting.DropDownItems.Add(new ToolStripSeparator());Item(meeting,"&Delete meeting...",Delete,needsSelection:true);
         meeting.DropDownOpening+=(_,_)=>{
             foreach(var item in selectionCommands)item.Enabled=Selected!=null;
+            bulkLabels.Enabled = meetings.Count > 0;
+            exceptions.Enabled = Selected is { Pattern: not Pattern.Unscheduled };
             favorite.Text=Selected?.Favorite==true?"Remove &favorite":"Mark as &favorite";
             favorite.Checked=Selected?.Favorite==true;
         };
@@ -105,14 +130,15 @@ sealed class MainWindow:Form {
         Item(views,"Filter by &category",()=>category.Focus());
         Item(views,"Filter by Zoom &account",()=>account.Focus());
         Item(views,"&Refresh",()=>RefreshRows(),Keys.F5);
+        Item(views, "Start&up settings...", EditStartup);
         views.DropDownOpening+=(_,_)=>{for(int i=0;i<viewCommands.Count;i++)viewCommands[i].Checked=view.SelectedIndex==i;};
         Item(help,"&User guide",Help,Keys.F1);
         Item(help,"&Keyboard shortcuts",()=>{using var window=new TextWindow("Keyboard shortcuts",ShortcutText);window.ShowDialog(this);});
         help.DropDownItems.Add(new ToolStripSeparator());
-        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.5\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
+        Item(help,"&About CallKeeper",()=>MessageBox.Show(this,"CallKeeper 0.6\r\nZoom and Teams meeting organizer.\r\nIndependent application; not affiliated with Zoom or Microsoft.\r\nYour directory is stored on this computer.","About CallKeeper"));
         bar.Items.AddRange([file,meeting,views,help]);return bar;
     }
-    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Alt+F4: Close window.";
+    const string ShortcutText="Alt or F10: menu bar. Alt+F: File. Alt+M: Meeting. Alt+V: View. Alt+H: Help. Use arrows to browse menus and Enter to activate a command. Escape closes a menu.\r\n\r\nCtrl+N: Add meeting. Ctrl+E: Edit selected meeting. Ctrl+I: Paste invitation. Ctrl+F: Search. Ctrl+1: Today. Ctrl+2: Upcoming. Ctrl+3: Favorites. Ctrl+4: All meetings. F5: Refresh. F1: User guide. Enter on the meeting list: Open meeting. Tab and Shift+Tab move through the main controls. Alt+O: Open meeting button. Alt+A: Add meeting button. Ctrl+S in Add or Edit Meeting: Save. Ctrl+Shift+C: Copy meeting link when the meeting list has focus. Alt+F4: Close window.";
     Meeting? Selected=>(list.SelectedItem as Row)?.Meeting;
     IEnumerable<string> Accounts=>meetings.Select(m=>m.ZoomAccount).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
     IEnumerable<string> Categories=>meetings.Select(m=>m.Category).Where(c=>c!="").Distinct(StringComparer.CurrentCultureIgnoreCase);
@@ -143,13 +169,16 @@ sealed class MainWindow:Form {
             rows=filtered.SelectMany(m=>Occurrences.Between(m,from,until).Select(o=>new Row(m,o.At,o.OriginalDate,true))).OrderBy(r=>r.Next).ThenBy(r=>r.Meeting.Name);
         }else {
             if(view.SelectedIndex==2)filtered=filtered.Where(m=>m.Favorite);
-            rows=filtered.Select(m=>new Row(m,Occurrences.Next(m,now)));
+            rows = filtered.Select(m => {
+                var occurrence = Occurrences.NextOccurrence(m, now);
+                return new Row(m, occurrence?.At, occurrence?.OriginalDate);
+            });
             rows=view.SelectedIndex==1?rows.Where(r=>r.Next!=null).OrderBy(r=>r.Next).ThenBy(r=>r.Meeting.Name):rows.OrderBy(r=>r.Meeting.Name,StringComparer.CurrentCultureIgnoreCase);
         }
         var next=rows.ToArray();
         // Avoid rebuilding an unchanged focused list on every timer tick.
         var old=list.Items.Cast<Row>().ToArray();
-        if(prefer==null && next.Length==old.Length && next.Select(r=>r.ToString()).SequenceEqual(old.Select(r=>r.ToString()))){if(next.Length==0)ShowDetails();return;}
+        if(prefer==null && next.Length==old.Length && next.SequenceEqual(old)){if(next.Length==0)ShowDetails();return;}
         list.BeginUpdate();list.Items.Clear();list.Items.AddRange(next);
         var found=Array.FindIndex(next,r=>r.Meeting.Id==keep && (oldDate==null || r.OriginalDate==oldDate));
         if(found<0)found=Array.FindIndex(next,r=>r.Meeting.Id==keep);
@@ -159,12 +188,74 @@ sealed class MainWindow:Form {
     void ShowDetails() {
         if(list.SelectedItem is not Row r){details.Text="No meetings in this view. Use Add, clear Search, Category or Zoom account filters, or choose All meetings.";favorite.Text="Mark as &favorite";return;}
         var m=r.Meeting;var zone=TimeZoneInfo.FindSystemTimeZoneById(m.ZoneId);favorite.Text=m.Favorite?"Remove &favorite":"Mark as &favorite";
+        var effectiveLink = DirectoryFeatures.LinkFor(m, r.OriginalDate);
+        var replacement = effectiveLink != m.Link;
         details.Text=$"{m.Name}\r\n{m.Platform}\r\nZoom account label: {(m.ZoomAccount==""?"None":m.ZoomAccount)}\r\nFavorite: {(m.Favorite?"Yes":"No")}\r\nCategory: {(m.Category==""?"Uncategorized":m.Category)}\r\n"+
             (m.Pattern==Pattern.Unscheduled?"Saved meeting link; no schedule.\r\n":$"{Occurrences.Schedule(m)} at {m.Time:h:mm tt} in {zone.DisplayName}\r\nStarts: {m.Start:D}\r\nEnds: {(m.End is {} end?end.ToString("D"):"No end date")}\r\n")+
             (r.Next is {} next?$"{(r.Today?"Today's start":"Next start")} in your local time: {next.ToLocalTime():f}\r\nIn meeting time: {TimeZoneInfo.ConvertTime(next,zone):f}\r\n":"No upcoming occurrence. You can still open the link.\r\n")+
-            $"Reminder: {(m.ReminderMinutes is {} minutes?minutes==0?"At meeting time":minutes+" minutes before":"Off")}; reminders require this application to stay open.\r\nExceptions: {m.Exceptions.Length}\r\nLink: {m.Link}\r\nMeeting ID: {m.MeetingId}\r\nPasscode: {m.Passcode}\r\nNotes: {m.Notes}";
+            $"Reminder: {(m.ReminderMinutes is {} minutes?minutes==0?"At meeting time":minutes+" minutes before":"Off")}; reminders require this application to stay open.\r\nExceptions: {m.Exceptions.Length}\r\n{(replacement ? "Replacement link for this occurrence" : "Link")}: {effectiveLink}\r\nMeeting ID: {(replacement ? "" : m.MeetingId)}\r\nPasscode: {(replacement ? "" : m.Passcode)}\r\nNotes: {m.Notes}";
     }
-    void Open() {if(Selected is {} m)try{Ui.Launch(m.Link,m.Platform);}catch(Exception e){Ui.Error(this,e);}}
+    void Open() {
+        if (list.SelectedItem is not Row row) return;
+        try { Ui.Launch(DirectoryFeatures.LinkFor(row.Meeting, row.OriginalDate), row.Meeting.Platform); }
+        catch (Exception e) { Ui.Error(this, e); }
+    }
+
+    void CopyMeeting(bool invitation) {
+        if (list.SelectedItem is not Row row) return;
+        try {
+            var occurrence = row.OriginalDate is {} date && row.Next is {} at ? new Occurrence(date, at) : null;
+            var text = invitation
+                ? DirectoryFeatures.InvitationFor(row.Meeting, occurrence)
+                : DirectoryFeatures.LinkFor(row.Meeting, row.OriginalDate);
+            Clipboard.SetText(text);
+            MessageBox.Show(this, invitation ? "Meeting invitation copied." : "Meeting link copied.", "Copied to clipboard");
+        } catch (Exception e) { Ui.Error(this, e); }
+    }
+
+    void RestoreAccountFilter(string? label) {
+        account.SelectedIndex = label switch { null => 0, "" => 1, _ => 0 };
+        if (string.IsNullOrEmpty(label)) return;
+        for (var i = 2; i < account.Items.Count; i++) {
+            if (!string.Equals(account.Items[i] as string, label, StringComparison.CurrentCultureIgnoreCase)) continue;
+            account.SelectedIndex = i;
+            break;
+        }
+    }
+
+    void SavePreferences(StartupPreferences settings) {
+        var label = settings.RememberAccount
+            ? account.SelectedIndex switch { 1 => "", >= 2 => account.Text, _ => null }
+            : null;
+        var saved = settings with { Account = label };
+        saved.Save(preferencesPath);
+        preferences = saved;
+    }
+
+    void EditStartup() {
+        using var dialog = new StartupWindow(preferences);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try { SavePreferences(dialog.Result); }
+        catch (Exception e) { Ui.Error(this, e); }
+    }
+
+    void BulkLabels() {
+        using var choose = new SelectionWindow("Choose meetings to relabel", meetings, Selected?.Id, false, bulkEdit: true);
+        if (choose.ShowDialog(this) != DialogResult.OK) return;
+        var checkedMeetings = choose.SelectedMeetings;
+        var ids = checkedMeetings.Select(m => m.Id).ToHashSet();
+        using var labels = new BulkLabelsWindow(ids.Count, checkedMeetings.Count(m => m.Platform == "Zoom"), Accounts, Categories);
+        if (labels.ShowDialog(this) != DialogResult.OK) return;
+        var next = meetings.Select(m => !ids.Contains(m.Id) ? m : m with {
+            ZoomAccount = m.Platform == "Zoom" ? labels.Account ?? m.ZoomAccount : m.ZoomAccount,
+            Category = labels.Category ?? m.Category
+        }).ToList();
+        var changed = meetings.Zip(next).Count(pair => pair.First != pair.Second);
+        try {
+            if (changed > 0) Commit(next);
+            MessageBox.Show(this, $"Updated labels on {changed} meetings.", "Bulk label changes");
+        } catch (Exception e) { Ui.Error(this, e); }
+    }
     void Commit(List<Meeting> next,Guid? select=null,bool reveal=false) {
         store.Save(next);meetings=next;UpdateCategories();
         if(reveal){search.Clear();category.SelectedIndex=0;account.SelectedIndex=0;view.SelectedIndex=3;}
@@ -178,7 +269,7 @@ sealed class MainWindow:Form {
     }
     void ToggleFavorite() {if(Selected is {} m)try{Commit(meetings.Select(x=>x.Id==m.Id?m with{Favorite=!m.Favorite}:x).ToList(),m.Id);}catch(Exception e){Ui.Error(this,e);}}
     void Exceptions() {
-        if(Selected is not {} m)return;
+        if (Selected is not {} m || m.Pattern == Pattern.Unscheduled) return;
         using var dialog=new ExceptionsWindow(m,(list.SelectedItem as Row)?.OriginalDate);
         if(dialog.ShowDialog(this)!=DialogResult.OK)return;
         try{Commit(meetings.Select(x=>x.Id==m.Id?m with{Exceptions=dialog.Result}:x).ToList(),m.Id);}catch(Exception e){Ui.Error(this,e);}
@@ -216,15 +307,38 @@ sealed class MainWindow:Form {
             if(new FileInfo(file.FileName).Length>20*1024*1024)throw new ArgumentException("The CSV exceeds 20 MB.");
             var imported=CsvMeetings.Parse(File.ReadAllText(file.FileName,new System.Text.UTF8Encoding(false,true)));
             if(imported.Errors.Count>0){using var errors=new TextWindow("CSV import needs corrections","No meetings were imported. Correct these lines, save as CSV UTF-8, and try again.\r\n\r\n"+string.Join("\r\n",imported.Errors));errors.ShowDialog(this);return;}
-            using var choose=new SelectionWindow("Review CSV meetings to import",imported.Meetings,null,false);if(choose.ShowDialog(this)!=DialogResult.OK)return;
-            var merge=DirectoryFeatures.Merge(meetings,choose.SelectedMeetings);
-            if(merge.Added>0)Commit(merge.Meetings,null,true);
-            MessageBox.Show(this,$"Added {merge.Added} meetings. Skipped {merge.Skipped} existing meetings. Your existing meetings were kept.\r\nChoose All meetings and use the Zoom account filter to find saved links. Account labels organize your directory; they do not sign into or switch Zoom accounts.","CSV import complete");
+            using var choose=new SelectionWindow("Review CSV meetings to import",imported.Meetings,null,false,reviewLinks:true);if(choose.ShowDialog(this)!=DialogResult.OK)return;
+            var plan = CsvLinkReview.Plan(meetings, choose.SelectedMeetings);
+            var replacements = new Dictionary<Guid, Meeting>();
+            int kept = 0;
+            foreach (var change in plan.Changes) {
+                using var review = new CsvLinkWindow(change);
+                switch (review.ShowDialog(this)) {
+                    case DialogResult.Yes: replacements.Add(change.Existing.Id, change.Apply()); break;
+                    case DialogResult.No: kept++; break;
+                    case DialogResult.Retry: plan.Additions.Add(change.Incoming); break;
+                    default: return;
+                }
+            }
+            var current = meetings.Select(m => replacements.GetValueOrDefault(m.Id, m));
+            var merge = DirectoryFeatures.Merge(current, plan.Additions);
+            if (merge.Added > 0 || replacements.Count > 0) Commit(merge.Meetings, null, true);
+            var summary = $"Added {merge.Added} meetings. Updated {replacements.Count} links. " +
+                $"Kept {kept} current links. Skipped {merge.Skipped} duplicates.";
+            if (plan.Ambiguous.Count == 0) {
+                MessageBox.Show(this, summary, "CSV import complete");
+            } else {
+                using var results = new TextWindow("CSV import results", summary +
+                    $"\r\n\r\nSkipped {plan.Ambiguous.Count} changed rows with multiple possible matches. " +
+                    "Use distinct meeting names or edit the link directly in CallKeeper.\r\n\r\n" +
+                    string.Join("\r\n", plan.Ambiguous));
+                results.ShowDialog(this);
+            }
         }catch(Exception e){Ui.Error(this,e);}
     }
     void ProtectLiveData(string path) {
         var candidate=Path.GetFullPath(path);var live=Path.GetFullPath(store.PathName);
-        if(candidate.Equals(live,StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".previous",StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".before-v02",StringComparison.OrdinalIgnoreCase) || candidate.Equals(Path.Combine(Path.GetDirectoryName(live)!,"reminders.json"),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Choose a file outside the application's live data and recovery files.");
+        if(candidate.Equals(preferencesPath,StringComparison.OrdinalIgnoreCase) || candidate.Equals(live,StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".previous",StringComparison.OrdinalIgnoreCase) || candidate.Equals(live+".before-v02",StringComparison.OrdinalIgnoreCase) || candidate.Equals(Path.Combine(Path.GetDirectoryName(live)!,"reminders.json"),StringComparison.OrdinalIgnoreCase))throw new ArgumentException("Choose a file outside the application's live data and recovery files.");
     }
     void Backup() {
         using var dialog=new SaveFileDialog{Filter="CallKeeper backup (*.json)|*.json",FileName="MeetingDirectory-"+DateTime.Now.ToString("yyyy-MM-dd")+".json"};
@@ -244,10 +358,18 @@ sealed class MainWindow:Form {
         if(due.Count==0)return;
         foreach(var item in due)reminderLog.Delivered.Add(item.Key);
         var logged=reminderLog.Save();
-        if(reminders is null || reminders.IsDisposed) {reminders=new ReminderWindow();reminders.Show(this);}
+        if(reminders is null || reminders.IsDisposed) {reminders=new ReminderWindow(OpenReminder);reminders.Show(this);}
         reminders.Add(due);System.Media.SystemSounds.Asterisk.Play();
         if(!logged)MessageBox.Show(this,"The reminder appeared, but its delivery could not be saved. It may appear again after restarting.","Reminder history");
     }
+    void OpenReminder(ReminderItem item) {
+        var meeting = meetings.FirstOrDefault(m => m.Id == item.MeetingId);
+        if (meeting is null || !Occurrences.Matches(meeting, item.Occurrence.OriginalDate) ||
+            meeting.Exceptions.Any(e => e.OriginalDate == item.Occurrence.OriginalDate && e.Skip))
+            throw new InvalidOperationException("This meeting occurrence is no longer in the directory.");
+        Ui.Launch(DirectoryFeatures.LinkFor(meeting, item.Occurrence.OriginalDate), meeting.Platform);
+    }
+
     void Help() {
         using var help=new TextWindow("CallKeeper help",HelpText.Value+"\r\n\r\nData: "+store.PathName);help.ShowDialog(this);
     }

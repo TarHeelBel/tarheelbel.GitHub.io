@@ -140,4 +140,43 @@ Check(CsvMeetings.Parse("MeetingName,MeetingLink,Meeting Name\nRoom,https://zoom
 Check(CsvMeetings.Parse("MeetingName,MeetingLink\n").Errors.Count>0,"Header-only template is not a completed import");
 Reject(()=>(room with{ReminderMinutes=10}).Validate(),"Saved links require a schedule before enabling reminders");
 Reject(()=>(room with{ZoomAccount=null!}).Validate(),"Malformed account label is rejected");
+// A link-only exception must keep the occurrence available through all schedule paths.
+const string substitute = "https://zoom.us/j/987654321";
+var overrideDate = new DateOnly(2026, 11, 3);
+var usual = reminderMeeting with { MeetingId = "123456789", Passcode = "old-room" };
+var substituteRoom = usual with {
+    Exceptions = [new MeetingException { OriginalDate = overrideDate, Skip = false, LinkOverride = substitute }]
+};
+substituteRoom.Validate();
+var substituteOccurrence = Occurrences.NextOccurrence(substituteRoom, dayStart)!;
+Check(substituteOccurrence == Occurrences.Between(usual, dayStart, dayEnd).Single() &&
+    Occurrences.Between(substituteRoom, dayStart, dayEnd).Single() == substituteOccurrence,
+    "A one-time link keeps the scheduled occurrence in Today and Upcoming");
+Check(DirectoryFeatures.Due([substituteRoom], now, new HashSet<string>()).Single().Link == substitute &&
+    DirectoryFeatures.LinkFor(substituteRoom, overrideDate.AddDays(1)) == usual.Link,
+    "The reminder uses the replacement and the next date uses the usual link");
+var substituteInvite = DirectoryFeatures.InvitationFor(substituteRoom, substituteOccurrence);
+Check(substituteInvite.Contains(substitute) && !substituteInvite.Contains("old-room") &&
+    !substituteInvite.Contains("123456789"),
+    "The copied replacement invitation excludes credentials for the usual room");
+var substituteRoundTrip = Store.Parse(System.Text.Json.JsonSerializer.Serialize(new[] { substituteRoom })).Single();
+Check(DirectoryFeatures.LinkFor(substituteRoundTrip, overrideDate) == substitute,
+    "The replacement link survives a backup round trip");
+Reject(() => (substituteRoom with {
+    Exceptions = [substituteRoom.Exceptions.Single() with { LinkOverride = "https://evil.example/j/1" }]
+}).Validate(), "Reject a replacement link outside the meeting platform");
+
+var currentCsvMeeting = room with { Favorite = true, Notes = "Personal notes", Passcode = "old" };
+var revisedCsv = room with { Id = Guid.NewGuid(), Link = substitute, MeetingId = "987654321", ZoomAccount = "COMMUNITY 1" };
+var linkPlan = CsvLinkReview.Plan([currentCsvMeeting], [revisedCsv]);
+var updatedMeeting = linkPlan.Changes.Single().Apply();
+Check(linkPlan.Additions.Count == 0 && updatedMeeting.Id == currentCsvMeeting.Id &&
+    updatedMeeting.Link == substitute && updatedMeeting.Favorite && updatedMeeting.Notes == "Personal notes" &&
+    updatedMeeting.MeetingId == "987654321" && updatedMeeting.Passcode.Length == 0,
+    "CSV review updates the link and its credentials while preserving the saved entry");
+Check(CsvLinkReview.Plan([currentCsvMeeting], [revisedCsv with { ZoomAccount = "Other account" }]).Additions.Count == 1,
+    "Same-name rooms in different accounts stay separate");
+Check(CsvLinkReview.Plan([currentCsvMeeting, room with { Id = Guid.NewGuid() }], [revisedCsv]).Ambiguous.Count == 1 &&
+    CsvLinkReview.Plan([currentCsvMeeting], [revisedCsv, revisedCsv with { Link = "https://zoom.us/j/22" }]).Changes.Count == 0,
+    "Ambiguous CSV changes never pick an existing meeting or incoming row automatically");
 Console.WriteLine($"{count} checks passed.");

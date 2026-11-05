@@ -1,4 +1,4 @@
-CALLKEEPER 0.5: IMPORTING YOUR ZOOM LINKS
+CALLKEEPER 0.6: IMPORTING YOUR ZOOM LINKS
 
 Quick start
 1. Open CallKeeper_Import_Template.xlsx in Excel.
@@ -38,6 +38,6 @@ Leave date, time, weekday, monthly and end-date fields blank for unscheduled lin
 
 Review and error handling
 Nothing is saved until you choose Import checked. If any CSV line is invalid, no meetings are imported; a readable, selectable error window lists the line numbers. Correct the spreadsheet, export CSV UTF-8 again, and retry. Blank rows are ignored. The import accepts up to 10,000 rows and a 20 MB file, and your combined directory cannot exceed 10,000 meetings.
-Existing meetings are kept. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
+Changed links can be reviewed before saving. CallKeeper matches by name, platform, and account label. When there is one saved match and one checked CSV row, you can update the link and its meeting ID and passcode, keep the current link, or add the CSV entry separately. Ambiguous changes are skipped and listed. Reimporting the same names, links, account labels and schedules skips duplicates. The same link in two different account labels remains separate. New names or changed account labels/schedules count as new meetings, so edit existing entries when you intend to change them. Imported reminders and favorites are off. Account labels are also available in Add/Edit Meeting and Search.
 
 Your workbook and CSV may contain private meeting links and passcodes. Store and share them accordingly. Existing saved directories and backups still load; older entries have no Zoom account label until you add one.
